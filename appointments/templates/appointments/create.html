@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<h2>➕ Crear Cita</h2>
+
+<form method="POST" class="card p-4">
+    {% csrf_token %}
+
+    <div class="mb-3">
+        <label>Tipo</label>
+        <select name="appointment_type" class="form-control">
+            <option value="first">Primera cita</option>
+            <option value="control">Control</option>
+            <option value="followup">Seguimiento</option>
+            <option value="delivery">Entrega</option>
+            <option value="spa">Spa</option>
+            <option value="cosmetic">Limpieza</option>
+        </select>
+    </div>
+
+    <div class="mb-3">
+        <label>Fecha</label>
+        <input type="date" name="date" class="form-control">
+    </div>
+
+    <div class="mb-3">
+        <label>Hora</label>
+        <input type="time" name="time" class="form-control">
+    </div>
+
+    <button class="btn btn-primary">Guardar</button>
+</form>
+
+{% endblock %}

@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<h2 class="mb-4">📊 Dashboard</h2>
+
+<div class="row">
+
+    <div class="col-md-3">
+        <div class="card bg-primary text-white p-3">
+            <h4>Total</h4>
+            <h2>{{ total }}</h2>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card bg-warning text-dark p-3">
+            <h4>Pendientes</h4>
+            <h2>{{ pending }}</h2>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card bg-success text-white p-3">
+            <h4>Confirmadas</h4>
+            <h2>{{ confirmed }}</h2>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card bg-danger text-white p-3">
+            <h4>Canceladas</h4>
+            <h2>{{ cancelled }}</h2>
+        </div>
+    </div>
+
+</div>
+
+<hr>
+
+<a href="/appointments/" class="btn btn-dark mt-3">Ver citas</a>
+
+{% endblock %}

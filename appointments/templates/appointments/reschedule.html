@@ -1,0 +1,13 @@
+<h1>Reprogramar cita</h1>
+
+<form method="POST">
+    {% csrf_token %}
+
+    <label>Nueva fecha</label>
+    <input type="date" name="date" required>
+
+    <label>Nueva hora</label>
+    <input type="time" name="time" required>
+
+    <button type="submit">Guardar cambios</button>
+</form>

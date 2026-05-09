@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Gutty Health - Citas</title>
+
+    <!-- Bootstrap -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+
+<body>
+
+<!-- 🔝 NAVBAR -->
+<nav class="navbar navbar-dark bg-dark px-3">
+    <span class="navbar-brand">🩺 Gutty Health</span>
+
+    <div>
+        <span class="text-white me-3">{{ request.user }}</span>
+        <a href="/users/logout/" class="btn btn-danger btn-sm">Salir</a>
+    </div>
+</nav>
+
+<!-- 📦 CONTENIDO -->
+<div class="container mt-4">
+
+    <h2>📅 Citas</h2>
+
+    <a href="/appointments/create/" class="btn btn-primary mb-3">➕ Nueva cita</a>
+
+    <table class="table table-bordered">
+        <thead class="table-dark">
+            <tr>
+                <th>Paciente</th>
+                <th>Tipo</th>
+                <th>Fecha</th>
+                <th>Hora</th>
+                <th>Estado</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+
+        <tbody>
+        {% for appointment in appointments %}
+            <tr>
+                <td>{{ appointment.patient }}</td>
+                <td>{{ appointment.get_appointment_type_display }}</td>
+                <td>{{ appointment.date }}</td>
+                <td>{{ appointment.time }}</td>
+                <td>{{ appointment.get_status_display }}</td>
+
+                <td>
+
+                    <!-- 👤 PACIENTE -->
+                    {% if request.user.role == 'patient' %}
+                        {% if appointment.status == 'pending' %}
+                            <a class="btn btn-danger btn-sm" href="/appointments/cancel/{{ appointment.id }}/">❌ Cancelar</a>
+                        {% endif %}
+                    {% endif %}
+
+                    <!-- 👨‍⚕️ DOCTOR -->
+                    {% if request.user.role == 'doctor' %}
+                        {% if appointment.status == 'pending' %}
+                            <a class="btn btn-success btn-sm" href="/appointments/status/{{ appointment.id }}/confirmed/">✔ Confirmar</a>
+                            <a class="btn btn-danger btn-sm" href="/appointments/status/{{ appointment.id }}/cancelled/">✖ Cancelar</a>
+                        {% endif %}
+                    {% endif %}
+
+                    <!-- 👑 ADMIN -->
+                    {% if request.user.role == 'admin' %}
+                        <a class="btn btn-success btn-sm" href="/appointments/status/{{ appointment.id }}/confirmed/">✔ Confirmar</a>
+                        <a class="btn btn-danger btn-sm" href="/appointments/status/{{ appointment.id }}/cancelled/">✖ Cancelar</a>
+                        <a class="btn btn-warning btn-sm" href="/appointments/status/{{ appointment.id }}/rescheduled/">🔄 Reprogramar</a>
+                    {% endif %}
+
+                </td>
+            </tr>
+        {% empty %}
+            <tr>
+                <td colspan="6">No hay citas registradas</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+
+    </table>
+
+</div>
+
+</body>
+</html>

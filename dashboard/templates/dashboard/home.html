@@ -1,0 +1,14 @@
+<h1>Dashboard Clínico Gutty</h1>
+
+<p>Total citas: {{ total_appointments }}</p>
+<p>Pendientes: {{ pending_appointments }}</p>
+<p>Confirmadas: {{ confirmed_appointments }}</p>
+<p>Usuarios: {{ total_users }}</p>
+
+<h3>Últimas citas</h3>
+
+<ul>
+    {% for a in latest_appointments %}
+        <li>{{ a.appointment_type }} - {{ a.date }} - {{ a.time }}</li>
+    {% endfor %}
+</ul>
