@@ -1,30 +1,55 @@
-from django.shortcuts import render, redirect, get_object_or_404
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from django.shortcuts import get_object_or_404
+
 from .models import Appointment
-from django.contrib.auth.decorators import login_required
+from .serializers import AppointmentSerializer
 
 
-@login_required
-def cancel_appointment(request, appointment_id):
-    appointment = get_object_or_404(Appointment, id=appointment_id)
+@api_view(['GET'])
+def appointments_api(request):
 
-    appointment.status = 'cancelled'
-    appointment.save()
+    appointments = Appointment.objects.all().order_by('-created_at')
 
-    return redirect('appointments_list')
+    serializer = AppointmentSerializer(
+        appointments,
+        many=True
+    )
+
+    return Response(serializer.data)
 
 
-@login_required
-def reschedule_appointment(request, appointment_id):
-    appointment = get_object_or_404(Appointment, id=appointment_id)
+@api_view(['PUT'])
+def update_appointment_api(request, appointment_id):
 
-    if request.method == 'POST':
-        appointment.date = request.POST['date']
-        appointment.time = request.POST['time']
-        appointment.status = 'rescheduled'
-        appointment.save()
+    appointment = get_object_or_404(
+        Appointment,
+        id=appointment_id
+    )
 
-        return redirect('appointments_list')
+    serializer = AppointmentSerializer(
+        appointment,
+        data=request.data,
+        partial=True
+    )
 
-    return render(request, 'appointments/reschedule.html', {
-        'appointment': appointment
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data)
+
+    return Response(serializer.errors, status=400)
+
+
+@api_view(['DELETE'])
+def delete_appointment_api(request, appointment_id):
+
+    appointment = get_object_or_404(
+        Appointment,
+        id=appointment_id
+    )
+
+    appointment.delete()
+
+    return Response({
+        "message": "Cita eliminada"
     })

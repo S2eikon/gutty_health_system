@@ -1,5 +1,5 @@
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 
@@ -11,8 +11,11 @@ from .serializers import AppointmentSerializer
 # 📥 LISTAR CITAS
 # =========================
 @api_view(['GET'])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def appointments_api(request):
+
+    print("USER AUTH:", request.user)
+    print("AUTH HEADER:", request.headers.get('Authorization'))
 
     appointments = Appointment.objects.all().order_by('-created_at')
 
@@ -25,66 +28,44 @@ def appointments_api(request):
 
 
 # =========================
-# ❌ DETALLE / ELIMINAR
+# ✏️ ACTUALIZAR CITA
 # =========================
-@api_view(['GET', 'DELETE'])
-@permission_classes([AllowAny])
-def appointment_detail_api(request, appointment_id):
+@api_view(['PUT'])
+@permission_classes([IsAuthenticated])
+def update_appointment_api(request, appointment_id):
 
     appointment = get_object_or_404(
         Appointment,
         id=appointment_id
     )
 
-    if request.method == 'GET':
+    serializer = AppointmentSerializer(
+        appointment,
+        data=request.data,
+        partial=True
+    )
 
-        serializer = AppointmentSerializer(appointment)
-
+    if serializer.is_valid():
+        serializer.save()
         return Response(serializer.data)
+
+    return Response(serializer.errors, status=400)
+
+
+# =========================
+# ❌ ELIMINAR CITA
+# =========================
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def delete_appointment_api(request, appointment_id):
+
+    appointment = get_object_or_404(
+        Appointment,
+        id=appointment_id
+    )
 
     appointment.delete()
 
     return Response({
         "message": "Cita eliminada"
-    }, status=200)
-
-
-# =========================
-# 🔄 CAMBIAR ESTADO
-# =========================
-@api_view(['PATCH'])
-@permission_classes([AllowAny])
-def update_appointment_status(
-    request,
-    appointment_id
-):
-
-    appointment = get_object_or_404(
-        Appointment,
-        id=appointment_id
-    )
-
-    status_value = request.data.get('status')
-
-    valid_status = [
-        'pending',
-        'confirmed',
-        'cancelled',
-        'rescheduled'
-    ]
-
-    if status_value not in valid_status:
-
-        return Response({
-            'error': 'Estado inválido'
-        }, status=400)
-
-    appointment.status = status_value
-
-    appointment.save()
-
-    serializer = AppointmentSerializer(
-        appointment
-    )
-
-    return Response(serializer.data)
+    })
