@@ -38,7 +38,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 
-    # apps
+    # Apps
     'appointments',
     'users',
     'medical_records',
@@ -46,7 +46,7 @@ INSTALLED_APPS = [
     'pqr',
     'dashboard',
 
-    # third party
+    # Third Party
     'rest_framework',
     'corsheaders',
     'rest_framework_simplejwt',
@@ -158,16 +158,23 @@ CSRF_TRUSTED_ORIGINS = [
 ]
 
 # =========================
-# 🔌 DRF + JWT
+# 🔌 DJANGO REST FRAMEWORK
 # =========================
 REST_FRAMEWORK = {
 
+    # Autenticación mediante JWT
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
 
+    # Permisos por defecto
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.AllowAny',
+    ),
+
+    # Forzar respuestas en JSON para depuración
+    'DEFAULT_RENDERER_CLASSES': (
+        'rest_framework.renderers.JSONRenderer',
     ),
 }
 
@@ -176,12 +183,15 @@ REST_FRAMEWORK = {
 # =========================
 SIMPLE_JWT = {
 
+    # Duración del Access Token
     'ACCESS_TOKEN_LIFETIME': timedelta(hours=24),
 
+    # Duración del Refresh Token
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
 
+    # Tipo de encabezado esperado
     'AUTH_HEADER_TYPES': ('Bearer',),
 
+    # Encabezado HTTP donde llega el token
     'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',
 }
-
