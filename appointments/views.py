@@ -1,5 +1,6 @@
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
+from rest_framework import status
 from django.shortcuts import get_object_or_404
 
 from users.permissions import (
@@ -7,6 +8,7 @@ from users.permissions import (
     IsAdminOrDoctor,
     IsAdminOrPatient,
     IsAdminOrReceptionist,
+    IsAdminDoctorPatientReceptionist,
 )
 from .models import Appointment
 from .serializers import AppointmentSerializer
@@ -16,7 +18,7 @@ from .serializers import AppointmentSerializer
 # LISTAR CITAS
 # ======================================================
 @api_view(["GET"])
-@permission_classes([IsAdminOrPatient])
+@permission_classes([IsAdminDoctorPatientReceptionist])
 def appointments_api(request):
 
     print("=" * 60)
@@ -25,7 +27,10 @@ def appointments_api(request):
     print("AUTH HEADER:", request.headers.get("Authorization"))
     print("=" * 60)
 
-    appointments = Appointment.objects.all().order_by("-created_at")
+    if request.user.role == "patient":
+        appointments = Appointment.objects.filter(patient=request.user).order_by("-created_at")
+    else:
+        appointments = Appointment.objects.all().order_by("-created_at")
 
     serializer = AppointmentSerializer(
         appointments,
@@ -54,11 +59,11 @@ def create_appointment_api(request):
 
         serializer.save(patient=request.user)
 
-        return Response(serializer.data, status=201)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     print(serializer.errors)
 
-    return Response(serializer.errors, status=400)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 # ======================================================
@@ -68,10 +73,17 @@ def create_appointment_api(request):
 @permission_classes([IsAdminOrPatient])
 def update_appointment_api(request, appointment_id):
 
-    appointment = get_object_or_404(
-        Appointment,
-        id=appointment_id
-    )
+    if request.user.role == "patient":
+        appointment = get_object_or_404(
+            Appointment,
+            id=appointment_id,
+            patient=request.user
+        )
+    else:
+        appointment = get_object_or_404(
+            Appointment,
+            id=appointment_id
+        )
 
     serializer = AppointmentSerializer(
         appointment,
@@ -81,13 +93,16 @@ def update_appointment_api(request, appointment_id):
 
     if serializer.is_valid():
 
-        serializer.save(patient=request.user)
+        if request.user.role == "patient":
+            serializer.save(patient=request.user)
+        else:
+            serializer.save()
 
         return Response(serializer.data)
 
     print(serializer.errors)
 
-    return Response(serializer.errors, status=400)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 # ======================================================
@@ -102,8 +117,20 @@ def confirm_appointment_api(request, appointment_id):
         id=appointment_id
     )
 
+    # Validar estado antes de confirmar
+    if appointment.status == "confirmed":
+        return Response(
+            {"error": "La cita ya está confirmada"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    if appointment.status == "cancelled":
+        return Response(
+            {"error": "No se puede confirmar una cita cancelada"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
     appointment.status = "confirmed"
-    appointment.save()
+    appointment.save(update_fields=["status"])
 
     return Response({
         "message": "Cita confirmada"
@@ -122,8 +149,16 @@ def cancel_appointment_api(request, appointment_id):
         id=appointment_id
     )
 
+    # Validar estado antes de cancelar
+    if appointment.status == "cancelled":
+        return Response(
+            {"error": "La cita ya fue cancelada"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    # Permitir cancelar citas confirmadas, por eso no hay restricción aquí
+
     appointment.status = "cancelled"
-    appointment.save()
+    appointment.save(update_fields=["status"])
 
     return Response({
         "message": "Cita cancelada"
@@ -142,8 +177,15 @@ def reschedule_appointment_api(request, appointment_id):
         id=appointment_id
     )
 
+    # Validar estado antes de reprogramar
+    if appointment.status == "cancelled":
+        return Response(
+            {"error": "No se puede reprogramar una cita cancelada"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
     appointment.status = "rescheduled"
-    appointment.save()
+    appointment.save(update_fields=["status"])
 
     return Response({
         "message": "Cita reprogramada"
