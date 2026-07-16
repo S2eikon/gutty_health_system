@@ -1,8 +1,13 @@
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 
+from users.permissions import (
+    IsAdmin,
+    IsAdminOrDoctor,
+    IsAdminOrPatient,
+    IsAdminOrReceptionist,
+)
 from .models import Appointment
 from .serializers import AppointmentSerializer
 
@@ -11,11 +16,12 @@ from .serializers import AppointmentSerializer
 # LISTAR CITAS
 # ======================================================
 @api_view(["GET"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAdminOrPatient])
 def appointments_api(request):
 
     print("=" * 60)
     print("USER:", request.user)
+    print("ROLE:", request.user.role)
     print("AUTH HEADER:", request.headers.get("Authorization"))
     print("=" * 60)
 
@@ -33,11 +39,12 @@ def appointments_api(request):
 # CREAR CITA
 # ======================================================
 @api_view(["POST"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAdminOrPatient])
 def create_appointment_api(request):
 
     print("=" * 60)
     print("USER:", request.user)
+    print("ROLE:", request.user.role)
     print("DATA:", request.data)
     print("=" * 60)
 
@@ -45,7 +52,6 @@ def create_appointment_api(request):
 
     if serializer.is_valid():
 
-        # Asignar el paciente autenticado aquí
         serializer.save(patient=request.user)
 
         return Response(serializer.data, status=201)
@@ -59,7 +65,7 @@ def create_appointment_api(request):
 # ACTUALIZAR CITA
 # ======================================================
 @api_view(["PUT"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAdminOrPatient])
 def update_appointment_api(request, appointment_id):
 
     appointment = get_object_or_404(
@@ -88,7 +94,7 @@ def update_appointment_api(request, appointment_id):
 # CONFIRMAR CITA
 # ======================================================
 @api_view(["PATCH"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAdminOrDoctor])
 def confirm_appointment_api(request, appointment_id):
 
     appointment = get_object_or_404(
@@ -108,7 +114,7 @@ def confirm_appointment_api(request, appointment_id):
 # CANCELAR CITA
 # ======================================================
 @api_view(["PATCH"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAdminOrDoctor])
 def cancel_appointment_api(request, appointment_id):
 
     appointment = get_object_or_404(
@@ -128,7 +134,7 @@ def cancel_appointment_api(request, appointment_id):
 # REPROGRAMAR CITA
 # ======================================================
 @api_view(["PATCH"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAdminOrReceptionist])
 def reschedule_appointment_api(request, appointment_id):
 
     appointment = get_object_or_404(
@@ -148,7 +154,7 @@ def reschedule_appointment_api(request, appointment_id):
 # ELIMINAR CITA
 # ======================================================
 @api_view(["DELETE"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAdmin])
 def delete_appointment_api(request, appointment_id):
 
     appointment = get_object_or_404(
