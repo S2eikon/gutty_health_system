@@ -28,6 +28,18 @@ urlpatterns = [
     ),
 
     path(
+        "api/<int:appointment_id>/cancel/",
+        views.cancel_appointment_api,
+        name="cancel_appointment"
+    ),
+
+    path(
+        "api/<int:appointment_id>/reschedule/",
+        views.reschedule_appointment_api,
+        name="reschedule_appointment"
+    ),
+
+    path(
         "api/<int:appointment_id>/delete/",
         views.delete_appointment_api,
         name="delete_appointment"

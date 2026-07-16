@@ -105,6 +105,46 @@ def confirm_appointment_api(request, appointment_id):
 
 
 # ======================================================
+# CANCELAR CITA
+# ======================================================
+@api_view(["PATCH"])
+@permission_classes([IsAuthenticated])
+def cancel_appointment_api(request, appointment_id):
+
+    appointment = get_object_or_404(
+        Appointment,
+        id=appointment_id
+    )
+
+    appointment.status = "cancelled"
+    appointment.save()
+
+    return Response({
+        "message": "Cita cancelada"
+    })
+
+
+# ======================================================
+# REPROGRAMAR CITA
+# ======================================================
+@api_view(["PATCH"])
+@permission_classes([IsAuthenticated])
+def reschedule_appointment_api(request, appointment_id):
+
+    appointment = get_object_or_404(
+        Appointment,
+        id=appointment_id
+    )
+
+    appointment.status = "rescheduled"
+    appointment.save()
+
+    return Response({
+        "message": "Cita reprogramada"
+    })
+
+
+# ======================================================
 # ELIMINAR CITA
 # ======================================================
 @api_view(["DELETE"])
