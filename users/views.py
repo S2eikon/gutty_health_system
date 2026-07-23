@@ -3,17 +3,17 @@ from django.contrib.auth import login, logout
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from .models import User
 
-# Nuevos imports para la API REST de perfil
+# Nuevos imports para la API REST de perfil y pacientes
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.decorators import api_view
 
-from .serializers import UserProfileSerializer
+from .serializers import UserProfileSerializer, UserSerializer  # Asegúrate de tener UserSerializer
 
 
 # REGISTRO
-
 def register_view(request):
     form = UserCreationForm()
 
@@ -39,7 +39,6 @@ def register_view(request):
 
 
 # LOGIN
-
 def login_view(request):
     form = AuthenticationForm()
 
@@ -56,7 +55,6 @@ def login_view(request):
 
 
 # LOGOUT
-
 def logout_view(request):
     logout(request)
     return redirect('/users/login/')
@@ -90,3 +88,17 @@ class ProfileAPIView(APIView):
             serializer.errors,
             status=status.HTTP_400_BAD_REQUEST
         )
+
+
+# =========================
+# LISTA DE PACIENTES (API)
+# =========================
+
+@api_view(['GET'])
+def patient_list_api(request):
+    patients = User.objects.filter(role='patient')
+    serializer = UserSerializer(
+        patients,
+        many=True
+    )
+    return Response(serializer.data)

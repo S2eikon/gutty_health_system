@@ -48,9 +48,12 @@ urlpatterns = [
     path('users/', include('users.urls')),
     path('appointments/', include('appointments.urls')),
     path('dashboard/', include('dashboard.urls')),
-
-    # Aquí agregamos la ruta para medical_records
     path('medical-records/', include('medical_records.urls')),
+
+    # =========================
+    # 💳 BILLING
+    # =========================
+    path('billing/', include('billing.urls')),
 
     # =========================
     # 🔐 JWT
@@ -68,3 +71,4 @@ urlpatterns = [
     ),
 
 ]
+

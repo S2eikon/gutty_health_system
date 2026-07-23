@@ -4,7 +4,8 @@ from .views import (
     register_view,
     login_view,
     logout_view,
-    ProfileAPIView
+    ProfileAPIView,
+    patient_list_api,  # Importar la nueva vista
 )
 
 urlpatterns = [
@@ -33,6 +34,13 @@ urlpatterns = [
         'profile/',
         ProfileAPIView.as_view(),
         name='profile'
+    ),
+
+    # Nueva ruta para obtener lista de pacientes
+    path(
+        'api/patients/',
+        patient_list_api,
+        name='patient_list_api'
     ),
 
 ]

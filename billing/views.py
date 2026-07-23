@@ -1,55 +1,41 @@
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
+from rest_framework import status
 
-from .models import Appointment
-from .serializers import AppointmentSerializer
-
+from .models import Bill
+from .serializers import BillSerializer
 
 @api_view(['GET'])
-def appointments_api(request):
-
-    appointments = Appointment.objects.all().order_by('-created_at')
-
-    serializer = AppointmentSerializer(
-        appointments,
-        many=True
-    )
-
+@permission_classes([IsAuthenticated])
+def bill_list(request):
+    bills = Bill.objects.all().order_by('-created_at')
+    serializer = BillSerializer(bills, many=True)
     return Response(serializer.data)
 
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def bill_create(request):
+    serializer = BillSerializer(data=request.data)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-@api_view(['PUT'])
-def update_appointment_api(request, appointment_id):
-
-    appointment = get_object_or_404(
-        Appointment,
-        id=appointment_id
-    )
-
-    serializer = AppointmentSerializer(
-        appointment,
-        data=request.data,
-        partial=True
-    )
-
+@api_view(['PATCH'])
+@permission_classes([IsAuthenticated])
+def bill_update(request, pk):
+    bill = get_object_or_404(Bill, pk=pk)
+    serializer = BillSerializer(bill, data=request.data, partial=True)
     if serializer.is_valid():
         serializer.save()
         return Response(serializer.data)
-
-    return Response(serializer.errors, status=400)
-
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(['DELETE'])
-def delete_appointment_api(request, appointment_id):
-
-    appointment = get_object_or_404(
-        Appointment,
-        id=appointment_id
-    )
-
-    appointment.delete()
-
-    return Response({
-        "message": "Cita eliminada"
-    })
+@permission_classes([IsAuthenticated])
+def bill_delete(request, pk):
+    bill = get_object_or_404(Bill, pk=pk)
+    bill.delete()
+    return Response({"message": "Factura eliminada"})
