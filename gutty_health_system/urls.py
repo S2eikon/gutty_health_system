@@ -72,3 +72,4 @@ urlpatterns = [
 
 ]
 
+

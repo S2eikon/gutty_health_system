@@ -45,4 +45,11 @@ urlpatterns = [
         name="delete_appointment"
     ),
 
+    # Nueva ruta para dashboard con totales por estado
+    path(
+        "api/dashboard/",
+        views.dashboard_totals_api,
+        name="dashboard_totals"
+    ),
+
 ]

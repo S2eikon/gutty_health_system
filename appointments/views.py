@@ -2,6 +2,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework import status
 from django.shortcuts import get_object_or_404
+from django.db.models import Count
 
 from users.permissions import (
     IsAdmin,
@@ -209,3 +210,32 @@ def delete_appointment_api(request, appointment_id):
     return Response({
         "message": "Cita eliminada"
     })
+
+
+# ======================================================
+# DASHBOARD: Totales por estado
+# ======================================================
+@api_view(["GET"])
+@permission_classes([IsAdminDoctorPatientReceptionist])
+def dashboard_totals_api(request):
+    # Filtrar citas según rol
+    if request.user.role == "patient":
+        appointments = Appointment.objects.filter(patient=request.user)
+    else:
+        appointments = Appointment.objects.all()
+
+    total = appointments.count()
+    pending = appointments.filter(status="pending").count()
+    confirmed = appointments.filter(status="confirmed").count()
+    cancelled = appointments.filter(status="cancelled").count()
+    rescheduled = appointments.filter(status="rescheduled").count()
+
+    data = {
+        "total": total,
+        "pending": pending,
+        "confirmed": confirmed,
+        "cancelled": cancelled,
+        "rescheduled": rescheduled,
+    }
+
+    return Response(data)
