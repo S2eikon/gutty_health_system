@@ -52,4 +52,10 @@ urlpatterns = [
         name="dashboard_totals"
     ),
 
+    # Nueva ruta para el calendario de citas
+    path(
+        "api/calendar/",
+        views.calendar_appointments_api,
+        name="calendar_appointments"
+    ),
 ]

@@ -2,7 +2,6 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework import status
 from django.shortcuts import get_object_or_404
-from django.db.models import Count
 
 from users.permissions import (
     IsAdmin,
@@ -29,9 +28,9 @@ def appointments_api(request):
     print("=" * 60)
 
     if request.user.role == "patient":
-        appointments = Appointment.objects.filter(patient=request.user).order_by("-created_at")
+        appointments = Appointment.objects.filter(patient=request.user).order_by("date", "time")
     else:
-        appointments = Appointment.objects.all().order_by("-created_at")
+        appointments = Appointment.objects.all().order_by("date", "time")
 
     serializer = AppointmentSerializer(
         appointments,
@@ -239,3 +238,50 @@ def dashboard_totals_api(request):
     }
 
     return Response(data)
+
+
+# ======================================================
+# CALENDARIO DE CITAS
+# ======================================================
+@api_view(["GET"])
+@permission_classes([IsAdminDoctorPatientReceptionist])
+def calendar_appointments_api(request):
+
+    if request.user.role == "patient":
+        appointments = Appointment.objects.filter(
+            patient=request.user
+        ).order_by("date", "time")
+    else:
+        appointments = Appointment.objects.all().order_by("date", "time")
+
+    events = []
+
+    for appointment in appointments:
+
+        color = "#ffc107"  # pendiente
+
+        if appointment.status == "confirmed":
+            color = "#198754"
+
+        elif appointment.status == "cancelled":
+            color = "#dc3545"
+
+        elif appointment.status == "rescheduled":
+            color = "#0dcaf0"
+
+        events.append({
+
+            "id": appointment.id,
+
+            "title": (
+                f"{appointment.patient.get_full_name()} - "
+                f"{appointment.get_appointment_type_display()}"
+            ),
+
+            "start": f"{appointment.date}T{appointment.time}",
+
+            "color": color
+
+        })
+
+    return Response(events)
