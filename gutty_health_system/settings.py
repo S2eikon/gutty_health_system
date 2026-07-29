@@ -46,8 +46,6 @@ ALLOWED_HOSTS = [
 INSTALLED_APPS = [
 
 
-    # Django
-
     'django.contrib.admin',
 
     'django.contrib.auth',
@@ -89,7 +87,6 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
 
 ]
-
 
 
 AUTH_USER_MODEL = 'users.User'
@@ -135,7 +132,10 @@ MIDDLEWARE = [
 
 
 
+
+
 ROOT_URLCONF = 'gutty_health_system.urls'
+
 
 
 
@@ -149,7 +149,6 @@ TEMPLATES = [
 
 
     {
-
 
         'BACKEND':
         'django.template.backends.django.DjangoTemplates',
@@ -168,9 +167,6 @@ TEMPLATES = [
 
 
                 'django.template.context_processors.request',
-
-
-                'django.contrib.auth.middleware.AuthenticationMiddleware',
 
 
                 'django.contrib.auth.context_processors.auth',
@@ -194,7 +190,11 @@ TEMPLATES = [
 
 
 
+
+
 WSGI_APPLICATION = 'gutty_health_system.wsgi.application'
+
+
 
 
 
@@ -238,40 +238,32 @@ AUTH_PASSWORD_VALIDATORS = [
 
     {
 
-
         'NAME':
         'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'
-
 
     },
 
 
     {
-
 
         'NAME':
         'django.contrib.auth.password_validation.MinimumLengthValidator'
 
-
     },
 
 
     {
-
 
         'NAME':
         'django.contrib.auth.password_validation.CommonPasswordValidator'
 
-
     },
 
 
     {
 
-
         'NAME':
         'django.contrib.auth.password_validation.NumericPasswordValidator'
-
 
     },
 
@@ -333,6 +325,8 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 
 
+
+
 # =========================
 # 📤 UPLOAD ARCHIVOS
 # =========================
@@ -341,6 +335,7 @@ FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024
 
 
 DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024
+
 
 
 
@@ -467,21 +462,25 @@ SIMPLE_JWT = {
 
 
     'ACCESS_TOKEN_LIFETIME':
+
     timedelta(hours=24),
 
 
 
     'REFRESH_TOKEN_LIFETIME':
+
     timedelta(days=7),
 
 
 
     'AUTH_HEADER_TYPES':
+
     ('Bearer',),
 
 
 
     'AUTH_HEADER_NAME':
+
     'HTTP_AUTHORIZATION',
 
 
