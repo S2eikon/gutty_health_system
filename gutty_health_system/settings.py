@@ -13,185 +13,476 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 from pathlib import Path
 from datetime import timedelta
 
+
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+
 
 # =========================
 # 🔐 SECURITY
 # =========================
+
 SECRET_KEY = 'django-insecure-f3ybtvtgl*+i9qqybu7d1_g34y!8ncz6s_k(*)-7p_8&*pyzue'
 
 DEBUG = True
 
+
 ALLOWED_HOSTS = [
+
     "localhost",
+
     "127.0.0.1",
+
 ]
+
+
+
+
 
 # =========================
 # 📦 APPS
 # =========================
+
 INSTALLED_APPS = [
+
+
+    # Django
+
     'django.contrib.admin',
+
     'django.contrib.auth',
+
     'django.contrib.contenttypes',
+
     'django.contrib.sessions',
+
     'django.contrib.messages',
+
     'django.contrib.staticfiles',
 
-    # Apps
-    'appointments',
+
+
+    # Proyecto
+
     'users',
+
+    'appointments',
+
     'medical_records',
+
+    'documents',
+
     'billing',
-    'pqr',
+
     'dashboard',
 
-    # Third Party
-    'rest_framework',
+    'pqr',
+
+
+
+    # Terceros
+
     'corsheaders',
+
+    'rest_framework',
+
     'rest_framework_simplejwt',
+
 ]
 
+
+
 AUTH_USER_MODEL = 'users.User'
+
+
+
+
+
 
 # =========================
 # 🔧 MIDDLEWARE
 # =========================
+
 MIDDLEWARE = [
+
+
     'corsheaders.middleware.CorsMiddleware',
 
+
     'django.middleware.security.SecurityMiddleware',
+
+
     'django.contrib.sessions.middleware.SessionMiddleware',
+
+
     'django.middleware.common.CommonMiddleware',
 
+
     'django.middleware.csrf.CsrfViewMiddleware',
+
+
     'django.contrib.auth.middleware.AuthenticationMiddleware',
 
+
     'django.contrib.messages.middleware.MessageMiddleware',
+
+
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+
 ]
 
+
+
+
+
 ROOT_URLCONF = 'gutty_health_system.urls'
+
+
+
+
 
 # =========================
 # 🎨 TEMPLATES
 # =========================
+
 TEMPLATES = [
+
+
     {
-        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+
+
+        'BACKEND':
+        'django.template.backends.django.DjangoTemplates',
+
+
         'DIRS': [],
+
+
         'APP_DIRS': True,
+
+
         'OPTIONS': {
+
+
             'context_processors': [
+
+
                 'django.template.context_processors.request',
+
+
+                'django.contrib.auth.middleware.AuthenticationMiddleware',
+
+
                 'django.contrib.auth.context_processors.auth',
+
+
                 'django.contrib.messages.context_processors.messages',
+
+
             ],
+
+
         },
+
+
     },
+
+
 ]
 
+
+
+
+
 WSGI_APPLICATION = 'gutty_health_system.wsgi.application'
+
+
+
+
 
 # =========================
 # 🗄️ DATABASE
 # =========================
+
 DATABASES = {
+
+
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+
+
+        'ENGINE':
+        'django.db.backends.sqlite3',
+
+
+        'NAME':
+        BASE_DIR / 'db.sqlite3',
+
+
     }
+
+
 }
 
+
+
+
+
+
+
 # =========================
-# 🔒 PASSWORD VALIDATION
+# 🔒 PASSWORDS
 # =========================
+
 AUTH_PASSWORD_VALIDATORS = [
+
+
     {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'
+
+
+        'NAME':
+        'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'
+
+
     },
+
+
     {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'
+
+
+        'NAME':
+        'django.contrib.auth.password_validation.MinimumLengthValidator'
+
+
     },
+
+
     {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'
+
+
+        'NAME':
+        'django.contrib.auth.password_validation.CommonPasswordValidator'
+
+
     },
+
+
     {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'
+
+
+        'NAME':
+        'django.contrib.auth.password_validation.NumericPasswordValidator'
+
+
     },
+
+
 ]
 
-# =========================
-# 🌍 LANGUAGE / TIME
-# =========================
-LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+
+
+
+
+
+# =========================
+# 🌎 IDIOMA
+# =========================
+
+LANGUAGE_CODE = 'es-co'
+
+
+TIME_ZONE = 'America/Bogota'
+
 
 USE_I18N = True
 
+
 USE_TZ = True
 
+
+
+
+
+
+
 # =========================
-# 📁 STATIC FILES
+# 📁 STATIC
 # =========================
+
 STATIC_URL = '/static/'
+
+
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+
+
+
+
+
+
+# =========================
+# 📂 MEDIA DOCUMENTOS
+# =========================
+
+MEDIA_URL = '/media/'
+
+
+MEDIA_ROOT = BASE_DIR / 'media'
+
+
+
+
+
+# =========================
+# 📤 UPLOAD ARCHIVOS
+# =========================
+
+FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024
+
+
+DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024
+
+
+
+
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+
+
+
+
+
+
 # =========================
-# 🌐 CORS
+# 🌐 CORS ANGULAR
 # =========================
+
 CORS_ALLOWED_ORIGINS = [
+
+
     "http://localhost:4200",
+
+
     "http://127.0.0.1:4200",
+
+
 ]
 
+
 CORS_ALLOW_CREDENTIALS = True
+
+
+
+
+
+
 
 # =========================
 # 🔥 CSRF
 # =========================
+
 CSRF_TRUSTED_ORIGINS = [
+
+
     "http://localhost:4200",
+
+
     "http://127.0.0.1:4200",
+
+
 ]
+
+
+
+
+
+
 
 # =========================
 # 🔌 DJANGO REST FRAMEWORK
 # =========================
+
 REST_FRAMEWORK = {
 
-    # Autenticación mediante JWT
+
     'DEFAULT_AUTHENTICATION_CLASSES': (
+
+
         'rest_framework_simplejwt.authentication.JWTAuthentication',
+
+
     ),
 
-    # Permisos por defecto
+
+
     'DEFAULT_PERMISSION_CLASSES': (
+
+
         'rest_framework.permissions.AllowAny',
+
+
     ),
 
-    # Forzar respuestas en JSON para depuración
+
+
     'DEFAULT_RENDERER_CLASSES': (
+
+
         'rest_framework.renderers.JSONRenderer',
+
+
     ),
+
+
+
+    'DEFAULT_PARSER_CLASSES': (
+
+
+        'rest_framework.parsers.JSONParser',
+
+
+        'rest_framework.parsers.MultiPartParser',
+
+
+        'rest_framework.parsers.FormParser',
+
+
+    ),
+
+
 }
 
+
+
+
+
+
+
 # =========================
-# 🔑 SIMPLE JWT
+# 🔑 JWT
 # =========================
+
 SIMPLE_JWT = {
 
-    # Duración del Access Token
-    'ACCESS_TOKEN_LIFETIME': timedelta(hours=24),
 
-    # Duración del Refresh Token
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    'ACCESS_TOKEN_LIFETIME':
+    timedelta(hours=24),
 
-    # Tipo de encabezado esperado
-    'AUTH_HEADER_TYPES': ('Bearer',),
 
-    # Encabezado HTTP donde llega el token
-    'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',
+
+    'REFRESH_TOKEN_LIFETIME':
+    timedelta(days=7),
+
+
+
+    'AUTH_HEADER_TYPES':
+    ('Bearer',),
+
+
+
+    'AUTH_HEADER_NAME':
+    'HTTP_AUTHORIZATION',
+
+
 }

@@ -15,61 +15,206 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path, include
+
+from django.urls import (
+    path,
+    include
+)
+
 from django.http import HttpResponse
 
+from django.conf import settings
+
+from django.conf.urls.static import static
+
+
 from rest_framework_simplejwt.views import (
+
     TokenObtainPairView,
+
     TokenRefreshView
+
 )
+
+
+
+
 
 # =========================
 # 🏠 HOME
 # =========================
-def home(request):
-    return HttpResponse("Sistema Clínico Gutty funcionando 🚀")
 
+def home(request):
+
+    return HttpResponse(
+        "Sistema Clínico Gutty funcionando 🚀"
+    )
+
+
+
+
+
+
+
+# =========================
+# 🌐 URLS PRINCIPALES
+# =========================
 
 urlpatterns = [
 
-    # =========================
-    # 🏠 ROOT
-    # =========================
-    path('', home),
 
-    # =========================
-    # ⚙️ ADMIN
-    # =========================
-    path('admin/', admin.site.urls),
 
-    # =========================
-    # 👤 APPS
-    # =========================
-    path('users/', include('users.urls')),
-    path('appointments/', include('appointments.urls')),
-    path('dashboard/', include('dashboard.urls')),
-    path('medical-records/', include('medical_records.urls')),
+    # =====================
+    # HOME
+    # =====================
 
-    # =========================
-    # 💳 BILLING
-    # =========================
-    path('billing/', include('billing.urls')),
-
-    # =========================
-    # 🔐 JWT
-    # =========================
     path(
+        '',
+        home
+    ),
+
+
+
+
+
+    # =====================
+    # ADMIN DJANGO
+    # =====================
+
+    path(
+        'admin/',
+        admin.site.urls
+    ),
+
+
+
+
+
+    # =====================
+    # 👤 USUARIOS
+    # =====================
+
+    path(
+        'users/',
+        include('users.urls')
+    ),
+
+
+
+
+
+    # =====================
+    # 📅 CITAS
+    # =====================
+
+    path(
+        'appointments/',
+        include('appointments.urls')
+    ),
+
+
+
+
+
+    # =====================
+    # 📊 DASHBOARD
+    # =====================
+
+    path(
+        'dashboard/',
+        include('dashboard.urls')
+    ),
+
+
+
+
+
+    # =====================
+    # 🏥 HISTORIAS CLÍNICAS
+    # =====================
+
+    path(
+        'medical-records/',
+        include('medical_records.urls')
+    ),
+
+
+
+
+
+    # =====================
+    # 📄 DOCUMENTOS MÉDICOS
+    # =====================
+
+    path(
+        'documents/',
+        include('documents.urls')
+    ),
+
+
+
+
+
+    # =====================
+    # 💳 FACTURACIÓN
+    # =====================
+
+    path(
+        'billing/',
+        include('billing.urls')
+    ),
+
+
+
+
+
+    # =====================
+    # 🔐 JWT LOGIN
+    # =====================
+
+    path(
+
         'api/token/',
+
         TokenObtainPairView.as_view(),
+
         name='token_obtain_pair'
+
     ),
 
+
+
+
+    # =====================
+    # 🔄 JWT REFRESH
+    # =====================
+
     path(
+
         'api/token/refresh/',
+
         TokenRefreshView.as_view(),
+
         name='token_refresh'
+
     ),
+
 
 ]
 
+# =========================
+# 📂 ARCHIVOS MEDIA
+# Desarrollo solamente
+# =========================
+
+if settings.DEBUG:
+
+
+    urlpatterns += static(
+
+        settings.MEDIA_URL,
+
+        document_root=settings.MEDIA_ROOT
+
+    )
 
