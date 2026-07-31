@@ -17,7 +17,6 @@ from datetime import timedelta
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
-
 # =========================
 # 🔐 SECURITY
 # =========================
@@ -34,7 +33,6 @@ ALLOWED_HOSTS = [
     "127.0.0.1",
 
 ]
-
 
 
 
@@ -132,8 +130,6 @@ MIDDLEWARE = [
 
 
 
-
-
 ROOT_URLCONF = 'gutty_health_system.urls'
 
 
@@ -191,7 +187,6 @@ TEMPLATES = [
 
 
 
-
 WSGI_APPLICATION = 'gutty_health_system.wsgi.application'
 
 
@@ -222,8 +217,6 @@ DATABASES = {
 
 
 }
-
-
 
 
 
@@ -269,7 +262,6 @@ AUTH_PASSWORD_VALIDATORS = [
 
 
 ]
-
 
 
 
@@ -372,7 +364,6 @@ CORS_ALLOW_CREDENTIALS = True
 
 
 
-
 # =========================
 # 🔥 CSRF
 # =========================
@@ -387,7 +378,6 @@ CSRF_TRUSTED_ORIGINS = [
 
 
 ]
-
 
 
 
@@ -452,8 +442,6 @@ REST_FRAMEWORK = {
 
 
 
-
-
 # =========================
 # 🔑 JWT
 # =========================
@@ -485,3 +473,28 @@ SIMPLE_JWT = {
 
 
 }
+
+# =========================
+# 📧 CONFIGURACIÓN EMAIL
+# =========================
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+
+EMAIL_HOST = 'smtp.gmail.com'
+
+EMAIL_PORT = 587
+
+EMAIL_USE_TLS = True
+
+EMAIL_USE_SSL = False
+
+EMAIL_HOST_USER = 'jimenezandru91@gmail.com'  # Cambia por tu correo real
+
+# Contraseña de aplicación de Gmail (16 caracteres, sin espacios)
+EMAIL_HOST_PASSWORD = 'nwusfguezlqvowxs'  # Cambia por tu contraseña de aplicación
+
+DEFAULT_FROM_EMAIL = f'Instituto Médico Asdrúbal Gutty <{EMAIL_HOST_USER}>'
+
+SERVER_EMAIL = DEFAULT_FROM_EMAIL
+
+EMAIL_TIMEOUT = 30

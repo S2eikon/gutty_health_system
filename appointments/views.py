@@ -14,6 +14,11 @@ from users.permissions import (
 from .models import Appointment
 from .serializers import AppointmentSerializer
 
+# Nuevos imports para recordatorios
+from django.utils import timezone
+from django.core.mail import send_mail
+from django.conf import settings
+
 
 # ======================================================
 # LISTAR CITAS
@@ -341,3 +346,148 @@ def calendar_appointments_api(request):
         })
 
     return Response(events)
+
+
+# ======================================================
+# ENVIAR RECORDATORIOS A TODAS LAS CITAS PENDIENTES
+# ======================================================
+@api_view(["POST"])
+@permission_classes([IsAdminDoctorPatientReceptionist])
+def send_pending_reminders_api(request):
+
+    appointments = Appointment.objects.filter(
+        status="pending",
+        reminder_sent=False
+    )
+
+    enviados = 0
+
+    for appointment in appointments:
+
+        if not appointment.patient.email:
+            continue
+
+        doctor_name = "Sin asignar"
+
+        if appointment.doctor:
+            doctor_name = (
+                appointment.doctor.get_full_name()
+                or appointment.doctor.username
+            )
+
+        send_mail(
+
+            "Recordatorio de cita médica",
+
+            f"""
+Hola {appointment.patient.get_full_name() or appointment.patient.username},
+
+Este es un recordatorio de su cita médica.
+
+Fecha: {appointment.date}
+Hora: {appointment.time.strftime('%H:%M')}
+Doctor: {doctor_name}
+Tipo de cita: {appointment.get_appointment_type_display()}
+
+Instituto Médico Asdrúbal Gutty
+""",
+
+            settings.DEFAULT_FROM_EMAIL,
+
+            [appointment.patient.email],
+
+            fail_silently=False,
+
+        )
+
+        appointment.reminder_sent = True
+        appointment.reminder_sent_at = timezone.now()
+
+        appointment.save(
+            update_fields=[
+                "reminder_sent",
+                "reminder_sent_at"
+            ]
+        )
+
+        enviados += 1
+
+    return Response(
+        {
+            "message": f"Se enviaron {enviados} recordatorios."
+        },
+        status=status.HTTP_200_OK
+    )
+
+
+# ======================================================
+# ENVIAR RECORDATORIO POR CORREO
+# ======================================================
+@api_view(["POST"])
+@permission_classes([IsAdminDoctorPatientReceptionist])
+def send_reminder_api(request, appointment_id):
+
+    appointment = get_object_or_404(
+        Appointment,
+        id=appointment_id
+    )
+
+    if not appointment.patient.email:
+
+        return Response(
+            {
+                "error": "El paciente no tiene un correo registrado."
+            },
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    subject = "Recordatorio de cita médica"
+
+    doctor_name = "Sin asignar"
+
+    if appointment.doctor:
+        doctor_name = (
+            appointment.doctor.get_full_name()
+            or appointment.doctor.username
+        )
+
+    message = f"""
+Hola {appointment.patient.get_full_name() or appointment.patient.username},
+
+Este es un recordatorio de su cita médica.
+
+Fecha: {appointment.date}
+Hora: {appointment.time.strftime('%H:%M')}
+Doctor: {doctor_name}
+Tipo de cita: {appointment.get_appointment_type_display()}
+
+Por favor llegue con 15 minutos de anticipación.
+
+Instituto Médico Asdrúbal Gutty
+"""
+
+    send_mail(
+        subject,
+        message,
+        settings.DEFAULT_FROM_EMAIL,
+        [appointment.patient.email],
+        fail_silently=False,
+    )
+
+    appointment.reminder_sent = True
+    appointment.reminder_sent_at = timezone.now()
+
+    appointment.save(
+        update_fields=[
+            "reminder_sent",
+            "reminder_sent_at"
+        ]
+    )
+
+    return Response(
+        {
+            "message": "Recordatorio enviado correctamente."
+        },
+        status=status.HTTP_200_OK
+    )
+

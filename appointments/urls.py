@@ -14,7 +14,6 @@ urlpatterns = [
         name="appointments_api"
     ),
 
-
     # ================================
     # CREAR CITA
     # POST /appointments/api/create/
@@ -24,7 +23,6 @@ urlpatterns = [
         views.create_appointment_api,
         name="create_appointment"
     ),
-
 
     # ================================
     # ACTUALIZAR CITA
@@ -36,7 +34,6 @@ urlpatterns = [
         name="update_appointment"
     ),
 
-
     # ================================
     # CONFIRMAR CITA
     # PATCH /appointments/api/<id>/confirm/
@@ -46,7 +43,6 @@ urlpatterns = [
         views.confirm_appointment_api,
         name="confirm_appointment"
     ),
-
 
     # ================================
     # CANCELAR CITA
@@ -58,7 +54,6 @@ urlpatterns = [
         name="cancel_appointment"
     ),
 
-
     # ================================
     # REPROGRAMAR CITA
     # PATCH /appointments/api/<id>/reschedule/
@@ -68,7 +63,6 @@ urlpatterns = [
         views.reschedule_appointment_api,
         name="reschedule_appointment"
     ),
-
 
     # ================================
     # ELIMINAR CITA
@@ -80,6 +74,25 @@ urlpatterns = [
         name="delete_appointment"
     ),
 
+    # ================================
+    # ENVIAR UN RECORDATORIO
+    # POST /appointments/api/<id>/send-reminder/
+    # ================================
+    path(
+        "api/<int:appointment_id>/send-reminder/",
+        views.send_reminder_api,
+        name="send_reminder"
+    ),
+
+    # ================================
+    # ENVIAR TODOS LOS RECORDATORIOS
+    # POST /appointments/api/send-reminders/
+    # ================================
+    path(
+        "api/send-reminders/",
+        views.send_pending_reminders_api,
+        name="send_pending_reminders"
+    ),
 
     # ================================
     # DASHBOARD
@@ -91,9 +104,8 @@ urlpatterns = [
         name="dashboard_totals"
     ),
 
-
     # ================================
-    # CALENDARIO FULLCALENDAR
+    # CALENDARIO
     # GET /appointments/api/calendar/
     # ================================
     path(
