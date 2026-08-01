@@ -70,6 +70,7 @@ class MedicalDocument(models.Model):
         verbose_name_plural = "Documentos médicos"
 
 
+
     def __str__(self):
 
         return f"{self.title} - {self.patient}"

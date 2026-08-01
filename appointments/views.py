@@ -13,6 +13,8 @@ from users.permissions import (
 
 from .models import Appointment
 from .serializers import AppointmentSerializer
+# Auditoría del sistema
+from audit.services import create_audit
 
 # Nuevos imports para recordatorios
 from django.utils import timezone
@@ -61,24 +63,55 @@ def create_appointment_api(request):
     print("DATA:", request.data)
     print("=" * 60)
 
-    serializer = AppointmentSerializer(data=request.data)
+
+    serializer = AppointmentSerializer(
+        data=request.data
+    )
+
 
     if serializer.is_valid():
 
-        serializer.save(patient=request.user)
+        appointment = serializer.save(
+            patient=request.user
+        )
+
+
+        create_audit(
+
+            user=request.user,
+
+            action="create",
+
+            module="Appointments",
+
+            object_id=appointment.id,
+
+            description="Usuario creó una nueva cita médica",
+
+            request=request
+
+        )
+
 
         return Response(
+
             serializer.data,
+
             status=status.HTTP_201_CREATED
+
         )
+
 
     print(serializer.errors)
 
-    return Response(
-        serializer.errors,
-        status=status.HTTP_400_BAD_REQUEST
-    )
 
+    return Response(
+
+        serializer.errors,
+
+        status=status.HTTP_400_BAD_REQUEST
+
+    )
 
 # ======================================================
 # ACTUALIZAR CITA
@@ -87,43 +120,93 @@ def create_appointment_api(request):
 @permission_classes([IsAdminOrPatient])
 def update_appointment_api(request, appointment_id):
 
+
     if request.user.role == "patient":
 
         appointment = get_object_or_404(
+
             Appointment,
+
             id=appointment_id,
+
             patient=request.user
+
         )
+
 
     else:
 
         appointment = get_object_or_404(
+
             Appointment,
+
             id=appointment_id
+
         )
 
+
     serializer = AppointmentSerializer(
+
         appointment,
+
         data=request.data,
+
         partial=True
+
     )
+
 
     if serializer.is_valid():
 
-        if request.user.role == "patient":
-            serializer.save(patient=request.user)
-        else:
-            serializer.save()
 
-        return Response(serializer.data)
+        if request.user.role == "patient":
+
+            appointment = serializer.save(
+
+                patient=request.user
+
+            )
+
+        else:
+
+            appointment = serializer.save()
+
+
+
+        create_audit(
+
+            user=request.user,
+
+            action="update",
+
+            module="Appointments",
+
+            object_id=appointment.id,
+
+            description="Usuario actualizó una cita médica",
+
+            request=request
+
+        )
+
+
+        return Response(
+
+            serializer.data
+
+        )
+
 
     print(serializer.errors)
 
-    return Response(
-        serializer.errors,
-        status=status.HTTP_400_BAD_REQUEST
-    )
 
+    return Response(
+
+        serializer.errors,
+
+        status=status.HTTP_400_BAD_REQUEST
+
+    )
 
 # ======================================================
 # CONFIRMAR
@@ -152,6 +235,22 @@ def confirm_appointment_api(request, appointment_id):
     appointment.status = "confirmed"
     appointment.save(update_fields=["status"])
 
+    create_audit(
+
+    user=request.user,
+
+    action="confirm",
+
+    module="Appointments",
+
+    object_id=appointment.id,
+
+    description="Administrador confirmó una cita médica",
+
+    request=request
+
+)
+
     return Response({
         "message": "Cita confirmada"
     })
@@ -177,6 +276,22 @@ def cancel_appointment_api(request, appointment_id):
 
     appointment.status = "cancelled"
     appointment.save(update_fields=["status"])
+
+    create_audit(
+
+    user=request.user,
+
+    action="cancel",
+
+    module="Appointments",
+
+    object_id=appointment.id,
+
+    description="Administrador canceló una cita médica",
+
+    request=request
+
+)
 
     return Response({
         "message": "Cita cancelada"
@@ -204,6 +319,22 @@ def reschedule_appointment_api(request, appointment_id):
     appointment.status = "rescheduled"
     appointment.save(update_fields=["status"])
 
+    create_audit(
+
+    user=request.user,
+
+    action="update",
+
+    module="Appointments",
+
+    object_id=appointment.id,
+
+    description="Usuario reprogramó una cita médica",
+
+    request=request
+
+)
+
     return Response({
         "message": "Cita reprogramada"
     })
@@ -216,16 +347,45 @@ def reschedule_appointment_api(request, appointment_id):
 @permission_classes([IsAdmin])
 def delete_appointment_api(request, appointment_id):
 
+
     appointment = get_object_or_404(
+
         Appointment,
+
         id=appointment_id
+
     )
+
+
+    create_audit(
+
+        user=request.user,
+
+        action="delete",
+
+        module="Appointments",
+
+        object_id=appointment.id,
+
+        description="Usuario eliminó una cita médica",
+
+        request=request
+
+    )
+
 
     appointment.delete()
 
-    return Response({
-        "message": "Cita eliminada"
-    })
+
+    return Response(
+
+        {
+
+            "message": "Cita eliminada"
+
+        }
+
+    )
 
 
 # ======================================================

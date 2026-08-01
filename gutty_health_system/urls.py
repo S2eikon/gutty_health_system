@@ -38,8 +38,6 @@ from rest_framework_simplejwt.views import (
 
 
 
-
-
 # =========================
 # 🏠 HOME
 # =========================
@@ -49,8 +47,6 @@ def home(request):
     return HttpResponse(
         "Sistema Clínico Gutty funcionando 🚀"
     )
-
-
 
 
 
@@ -169,6 +165,32 @@ urlpatterns = [
 
 
     # =====================
+    # 📬 PQR
+    # =====================
+
+    path(
+        'pqr/',
+        include('pqr.urls')
+    ),
+
+
+
+
+
+    # =====================
+    # 📋 AUDITORÍA
+    # =====================
+
+    path(
+        'audit/',
+        include('audit.urls')
+    ),
+
+
+
+
+
+    # =====================
     # 🔐 JWT LOGIN
     # =====================
 
@@ -181,6 +203,7 @@ urlpatterns = [
         name='token_obtain_pair'
 
     ),
+
 
 
 
@@ -199,16 +222,18 @@ urlpatterns = [
 
     ),
 
-
 ]
+
+
+
+
 
 # =========================
 # 📂 ARCHIVOS MEDIA
-# Desarrollo solamente
+# Solo desarrollo
 # =========================
 
 if settings.DEBUG:
-
 
     urlpatterns += static(
 
@@ -217,4 +242,3 @@ if settings.DEBUG:
         document_root=settings.MEDIA_ROOT
 
     )
-

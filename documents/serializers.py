@@ -1,13 +1,15 @@
 from rest_framework import serializers
 
-from django.conf import settings
-
 from .models import MedicalDocument
 
 
 
 class MedicalDocumentSerializer(serializers.ModelSerializer):
 
+
+    # ==========================================
+    # CAMPOS PERSONALIZADOS
+    # ==========================================
 
     patient_name = serializers.CharField(
         source="patient.get_full_name",
@@ -48,10 +50,10 @@ class MedicalDocumentSerializer(serializers.ModelSerializer):
             "uploaded_by",
             "uploaded_by_name",
 
+            "title",
+
             "document_type",
             "document_type_display",
-
-            "title",
 
             "description",
 
@@ -59,36 +61,139 @@ class MedicalDocumentSerializer(serializers.ModelSerializer):
             "file_url",
 
             "uploaded_at",
+
         ]
 
 
         read_only_fields = [
 
-            "uploaded_at",
+            "id",
+
             "uploaded_by",
+
+            "uploaded_by_name",
+
+            "patient_name",
+
+            "document_type_display",
+
+            "uploaded_at",
+
             "file_url",
 
         ]
 
 
+        extra_kwargs = {
 
-    # ==================================================
+            "description": {
+                "required": False,
+                "allow_blank": True
+            },
+
+            "file": {
+                "required": True
+            }
+
+        }
+
+
+
+
+    # ==========================================
+    # VALIDAR TITULO
+    # ==========================================
+
+    def validate_title(self, value):
+
+        value = value.strip()
+
+
+        if not value:
+
+            raise serializers.ValidationError(
+                "El título del documento es obligatorio."
+            )
+
+
+        return value
+
+
+
+
+    # ==========================================
+    # VALIDAR DESCRIPCIÓN
+    # ==========================================
+
+    def validate_description(self, value):
+
+
+        if value and len(value) > 500:
+
+            raise serializers.ValidationError(
+                "La descripción no puede superar los 500 caracteres."
+            )
+
+
+        return value
+
+
+
+
+    # ==========================================
+    # VALIDAR TIPO DOCUMENTO
+    # ==========================================
+
+    def validate_document_type(self, value):
+
+
+        allowed = [
+
+            "exam",
+            "photo",
+            "image",
+            "prescription",
+            "consent",
+            "order",
+            "other"
+
+        ]
+
+
+        if value not in allowed:
+
+            raise serializers.ValidationError(
+                "Tipo de documento inválido."
+            )
+
+
+        return value
+
+
+
+
+    # ==========================================
     # VALIDAR ARCHIVO
-    # ==================================================
+    # ==========================================
 
     def validate_file(self, value):
+
 
         allowed_extensions = [
 
             "pdf",
             "jpg",
             "jpeg",
-            "png",
+            "png"
 
         ]
 
 
-        extension = value.name.split(".")[-1].lower()
+        extension = (
+            value.name
+            .split(".")[-1]
+            .lower()
+        )
 
 
         if extension not in allowed_extensions:
@@ -98,8 +203,6 @@ class MedicalDocumentSerializer(serializers.ModelSerializer):
             )
 
 
-
-        # Máximo 10 MB
 
         max_size = 10 * 1024 * 1024
 
@@ -115,27 +218,30 @@ class MedicalDocumentSerializer(serializers.ModelSerializer):
 
 
 
-    # ==================================================
+
+    # ==========================================
     # URL ARCHIVO
-    # ==================================================
+    # ==========================================
 
     def get_file_url(self, obj):
+
+
+        if not obj.file:
+
+            return None
+
+
 
         request = self.context.get(
             "request"
         )
 
 
-        if obj.file:
+        if request:
 
-            if request:
-
-                return request.build_absolute_uri(
-                    obj.file.url
-                )
+            return request.build_absolute_uri(
+                obj.file.url
+            )
 
 
-            return obj.file.url
-
-
-        return None
+        return obj.file.url
