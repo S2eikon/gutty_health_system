@@ -13,6 +13,8 @@ from users.permissions import (
 from .models import PQR
 from .serializers import PQRSerializer
 
+from audit.services import create_audit
+
 
 # ======================================================
 # LISTAR PQR
@@ -57,9 +59,32 @@ def create_pqr_api(request):
 
     if serializer.is_valid():
 
-        serializer.save(
+        pqr = serializer.save(
             user=request.user,
             status="open"
+        )
+
+        # ==============================================
+        # AUDITORÍA - CREAR PQR
+        # ==============================================
+
+        create_audit(
+
+            user=request.user,
+
+            action="create",
+
+            module="pqr",
+
+            object_id=pqr.id,
+
+            description=(
+                f"El usuario {request.user.username} "
+                f"creó la PQR con ID {pqr.id}."
+            ),
+
+            request=request
+
         )
 
         return Response(
@@ -96,7 +121,9 @@ def pqr_detail_api(request, pqr_id):
             id=pqr_id
         )
 
-    serializer = PQRSerializer(pqr)
+    serializer = PQRSerializer(
+        pqr
+    )
 
     return Response(
         serializer.data,
@@ -117,13 +144,16 @@ def respond_pqr_api(request, pqr_id):
         id=pqr_id
     )
 
-    response_text = request.data.get("response")
+    response_text = request.data.get(
+        "response"
+    )
 
     if not response_text:
 
         return Response(
             {
-                "error": "La respuesta es obligatoria."
+                "error":
+                "La respuesta es obligatoria."
             },
             status=status.HTTP_400_BAD_REQUEST
         )
@@ -141,7 +171,32 @@ def respond_pqr_api(request, pqr_id):
 
     pqr.save()
 
-    serializer = PQRSerializer(pqr)
+    # ==============================================
+    # AUDITORÍA - RESPONDER PQR
+    # ==============================================
+
+    create_audit(
+
+        user=request.user,
+
+        action="response",
+
+        module="pqr",
+
+        object_id=pqr.id,
+
+        description=(
+            f"El usuario {request.user.username} "
+            f"respondió la PQR con ID {pqr.id}."
+        ),
+
+        request=request
+
+    )
+
+    serializer = PQRSerializer(
+        pqr
+    )
 
     return Response(
         serializer.data,
@@ -162,11 +217,46 @@ def delete_pqr_api(request, pqr_id):
         id=pqr_id
     )
 
+    # ==============================================
+    # GUARDAR ID ANTES DE ELIMINAR
+    # ==============================================
+
+    pqr_id_deleted = pqr.id
+
+    # ==============================================
+    # ELIMINAR PQR
+    # ==============================================
+
     pqr.delete()
+
+    # ==============================================
+    # AUDITORÍA - ELIMINAR PQR
+    # ==============================================
+
+    create_audit(
+
+        user=request.user,
+
+        action="delete",
+
+        module="pqr",
+
+        object_id=pqr_id_deleted,
+
+        description=(
+            f"El usuario {request.user.username} "
+            f"eliminó la PQR con ID "
+            f"{pqr_id_deleted}."
+        ),
+
+        request=request
+
+    )
 
     return Response(
         {
-            "message": "PQR eliminada correctamente."
+            "message":
+            "PQR eliminada correctamente."
         },
         status=status.HTTP_200_OK
     )

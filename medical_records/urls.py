@@ -7,7 +7,17 @@ from .views import (
     delete_medical_record,
 )
 
+
+# =====================================================
+# URLS - HISTORIALES MÉDICOS
+# =====================================================
+
 urlpatterns = [
+
+    # =================================================
+    # LISTAR HISTORIALES
+    # GET /medical-records/api/
+    # =================================================
 
     path(
         'api/',
@@ -15,17 +25,32 @@ urlpatterns = [
         name='medical_record_list'
     ),
 
+    # =================================================
+    # CREAR HISTORIAL
+    # POST /medical-records/api/create/
+    # =================================================
+
     path(
         'api/create/',
         create_medical_record,
         name='create_medical_record'
     ),
 
+    # =================================================
+    # ACTUALIZAR HISTORIAL
+    # PATCH /medical-records/api/<id>/
+    # =================================================
+
     path(
         'api/<int:pk>/',
         update_medical_record,
         name='update_medical_record'
     ),
+
+    # =================================================
+    # ELIMINAR HISTORIAL
+    # DELETE /medical-records/api/<id>/delete/
+    # =================================================
 
     path(
         'api/<int:pk>/delete/',

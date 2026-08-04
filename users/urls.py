@@ -1,46 +1,63 @@
 from django.urls import path
 
 from .views import (
-    register_view,
-    login_view,
-    logout_view,
-    ProfileAPIView,
-    patient_list_api,  # Importar la nueva vista
+register_view,
+login_view,
+logout_view,
+ProfileAPIView,
+patient_list_api,
 )
+
+# ======================================================
+
+# URLS - USUARIOS
+
+# ======================================================
 
 urlpatterns = [
 
-    # HTML
-    path(
-        'register/',
-        register_view,
-        name='register'
-    ),
+# ==================================================
+# AUTENTICACIÓN HTML
+# ==================================================
 
-    path(
-        'login/',
-        login_view,
-        name='login'
-    ),
+path(
+    'register/',
+    register_view,
+    name='register'
+),
 
-    path(
-        'logout/',
-        logout_view,
-        name='logout'
-    ),
+path(
+    'login/',
+    login_view,
+    name='login'
+),
 
-    # API REST
-    path(
-        'profile/',
-        ProfileAPIView.as_view(),
-        name='profile'
-    ),
+path(
+    'logout/',
+    logout_view,
+    name='logout'
+),
 
-    # Nueva ruta para obtener lista de pacientes
-    path(
-        'api/patients/',
-        patient_list_api,
-        name='patient_list_api'
-    ),
+
+# ==================================================
+# API REST - PERFIL
+# ==================================================
+
+path(
+    'profile/',
+    ProfileAPIView.as_view(),
+    name='profile'
+),
+
+
+# ==================================================
+# API REST - PACIENTES
+# ==================================================
+
+path(
+    'api/patients/',
+    patient_list_api,
+    name='patient_list_api'
+),
 
 ]

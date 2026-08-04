@@ -1,14 +1,92 @@
-<h2>📝 Registro</h2>
+<!DOCTYPE html>
+<html lang="es">
 
-<form method="POST">
-    {% csrf_token %}
-    {{ form.as_p }}
+<head>
 
-    <label>Rol:</label>
-    <select name="role">
-        <option value="patient">Paciente</option>
-        <option value="doctor">Doctor</option>
-    </select>
+    <meta charset="UTF-8">
 
-    <button type="submit">Registrarse</button>
-</form>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Registro | Gutty Health System</title>
+
+</head>
+
+<body>
+
+    <!-- =====================================================
+         REGISTRO - GUTTY HEALTH SYSTEM
+         ===================================================== -->
+
+    <main>
+
+        <h1>📝 Registro de usuario</h1>
+
+        <p>
+            Crea una cuenta para acceder al sistema.
+        </p>
+
+        <!-- =================================================
+             FORMULARIO DE REGISTRO
+             ================================================= -->
+
+        <form method="POST">
+
+            {% csrf_token %}
+
+            {{ form.as_p }}
+
+            <!-- =============================================
+                 SELECCIÓN DE ROL
+                 ============================================= -->
+
+            <div>
+
+                <label for="role">
+                    Rol:
+                </label>
+
+                <select
+                    name="role"
+                    id="role"
+                    required
+                >
+
+                    <option value="patient">
+                        Paciente
+                    </option>
+
+                    <option value="doctor">
+                        Doctor
+                    </option>
+
+                </select>
+
+            </div>
+
+            <br>
+
+            <button type="submit">
+                Registrarse
+            </button>
+
+        </form>
+
+        <!-- =================================================
+             LOGIN
+             ================================================= -->
+
+        <p>
+
+            ¿Ya tienes una cuenta?
+
+            <a href="/users/login/">
+                Iniciar sesión
+            </a>
+
+        </p>
+
+    </main>
+
+</body>
+
+</html>

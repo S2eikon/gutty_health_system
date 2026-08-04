@@ -51,3 +51,4 @@ class MedicalRecord(models.Model):
 
     def __str__(self):
         return f'{self.patient.username} - {self.get_consultation_display()} ({self.created_at})'
+

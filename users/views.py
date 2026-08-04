@@ -1,104 +1,426 @@
 from django.shortcuts import render, redirect
-from django.contrib.auth import login, logout
-from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
+from django.contrib.auth import login, logout, authenticate
+from django import forms
+
 from .models import User
 
-# Nuevos imports para la API REST de perfil y pacientes
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.decorators import api_view
+from rest_framework.decorators import (
+    api_view,
+    permission_classes,
+)
 
-from .serializers import UserProfileSerializer, UserSerializer  # Asegúrate de tener UserSerializer
+from .serializers import (
+    UserProfileSerializer,
+    UserSerializer,
+)
+
+from audit.services import create_audit
 
 
-# REGISTRO
+# ======================================================
+# FORMULARIO DE REGISTRO
+# ======================================================
+
+class RegisterForm(forms.ModelForm):
+
+    password1 = forms.CharField(
+        label="Contraseña",
+        widget=forms.PasswordInput
+    )
+
+    password2 = forms.CharField(
+        label="Confirmar contraseña",
+        widget=forms.PasswordInput
+    )
+
+    class Meta:
+        model = User
+        fields = [
+            "username",
+            "password1",
+            "password2",
+        ]
+
+    def clean_password2(self):
+
+        password1 = self.cleaned_data.get(
+            "password1"
+        )
+
+        password2 = self.cleaned_data.get(
+            "password2"
+        )
+
+        if (
+            password1
+            and password2
+            and password1 != password2
+        ):
+            raise forms.ValidationError(
+                "Las contraseñas no coinciden."
+            )
+
+        return password2
+
+    def save(self, commit=True):
+
+        user = super().save(
+            commit=False
+        )
+
+        user.set_password(
+            self.cleaned_data["password1"]
+        )
+
+        if commit:
+            user.save()
+
+        return user
+
+
+# ======================================================
+# REGISTRO DE USUARIO
+# ======================================================
+
 def register_view(request):
-    form = UserCreationForm()
 
-    if request.method == 'POST':
-        form = UserCreationForm(request.POST)
+    form = RegisterForm()
+
+    if request.method == "POST":
+
+        form = RegisterForm(
+            request.POST
+        )
 
         if form.is_valid():
-            user = form.save(commit=False)
 
-            role = request.POST.get('role')
+            user = form.save(
+                commit=False
+            )
 
-            if role in ['patient', 'doctor']:
+            role = request.POST.get(
+                "role"
+            )
+
+            if role in [
+                "patient",
+                "doctor"
+            ]:
                 user.role = role
+
             else:
-                user.role = 'patient'
+                user.role = "patient"
 
             user.save()
-            login(request, user)
 
-            return redirect('/appointments/')
+            # ==================================================
+            # AUDITORÍA - REGISTRO
+            # ==================================================
 
-    return render(request, 'users/register.html', {'form': form})
+            create_audit(
+
+                user=user,
+
+                action="create",
+
+                module="users",
+
+                object_id=user.id,
+
+                description=(
+                    f"El usuario {user.username} "
+                    f"fue registrado en el sistema "
+                    f"con rol {user.role}."
+                ),
+
+                request=request,
+
+            )
+
+            login(
+                request,
+                user
+            )
+
+            return redirect("/")
+
+    return render(
+
+        request,
+
+        "users/register.html",
+
+        {
+            "form": form
+        }
+
+    )
 
 
+# ======================================================
 # LOGIN
+# ======================================================
+
 def login_view(request):
-    form = AuthenticationForm()
 
-    if request.method == 'POST':
-        form = AuthenticationForm(request, data=request.POST)
+    username = ""
+    error = None
 
-        if form.is_valid():
-            user = form.get_user()
-            login(request, user)
+    if request.method == "POST":
 
-            return redirect('/appointments/')
+        username = request.POST.get(
+            "username",
+            ""
+        )
 
-    return render(request, 'users/login.html', {'form': form})
+        password = request.POST.get(
+            "password",
+            ""
+        )
+
+        user = authenticate(
+
+            request,
+
+            username=username,
+
+            password=password
+
+        )
+
+        if user is not None:
+
+            login(
+                request,
+                user
+            )
+
+            # ==================================================
+            # AUDITORÍA - LOGIN
+            # ==================================================
+
+            create_audit(
+
+                user=user,
+
+                action="login",
+
+                module="users",
+
+                object_id=user.id,
+
+                description=(
+                    f"El usuario {user.username} "
+                    f"inició sesión en el sistema."
+                ),
+
+                request=request,
+
+            )
+
+            return redirect("/")
+
+        error = (
+            "Usuario o contraseña incorrectos."
+        )
+
+    return render(
+
+        request,
+
+        "users/login.html",
+
+        {
+            "username": username,
+            "error": error,
+        }
+
+    )
 
 
+# ======================================================
 # LOGOUT
+# ======================================================
+
 def logout_view(request):
-    logout(request)
-    return redirect('/users/login/')
+
+    user = request.user
+
+    # ==================================================
+    # AUDITORÍA - LOGOUT
+    # ==================================================
+
+    if user.is_authenticated:
+
+        create_audit(
+
+            user=user,
+
+            action="logout",
+
+            module="users",
+
+            object_id=user.id,
+
+            description=(
+                f"El usuario {user.username} "
+                f"cerró sesión."
+            ),
+
+            request=request,
+
+        )
+
+    logout(
+        request
+    )
+
+    return redirect(
+        "/users/login/"
+    )
 
 
-# =========================
-# PERFIL DE USUARIO (API)
-# =========================
+# ======================================================
+# PERFIL DE USUARIO - API
+# ======================================================
 
 class ProfileAPIView(APIView):
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [
+        IsAuthenticated
+    ]
+
+    # ==================================================
+    # CONSULTAR PERFIL
+    # ==================================================
 
     def get(self, request):
-        serializer = UserProfileSerializer(request.user)
-        return Response(serializer.data)
+
+        serializer = UserProfileSerializer(
+            request.user
+        )
+
+        return Response(
+
+            serializer.data,
+
+            status=status.HTTP_200_OK
+
+        )
+
+    # ==================================================
+    # ACTUALIZAR PERFIL
+    # ==================================================
 
     def put(self, request):
+
         serializer = UserProfileSerializer(
+
             request.user,
+
             data=request.data,
+
             partial=True
+
         )
+
         if serializer.is_valid():
-            serializer.save()
-            return Response(
-                serializer.data,
-                status=status.HTTP_200_OK
+
+            user = serializer.save()
+
+            # ==================================================
+            # AUDITORÍA - ACTUALIZAR PERFIL
+            # ==================================================
+
+            create_audit(
+
+                user=request.user,
+
+                action="update",
+
+                module="users",
+
+                object_id=user.id,
+
+                description=(
+                    f"El usuario {request.user.username} "
+                    f"actualizó su perfil."
+                ),
+
+                request=request,
+
             )
+
+            return Response(
+
+                serializer.data,
+
+                status=status.HTTP_200_OK
+
+            )
+
         return Response(
+
             serializer.errors,
+
             status=status.HTTP_400_BAD_REQUEST
+
         )
 
 
-# =========================
-# LISTA DE PACIENTES (API)
-# =========================
+# ======================================================
+# LISTA DE PACIENTES - API
+# ======================================================
 
-@api_view(['GET'])
+@api_view(["GET"])
+@permission_classes([
+    IsAuthenticated
+])
 def patient_list_api(request):
-    patients = User.objects.filter(role='patient')
-    serializer = UserSerializer(
-        patients,
-        many=True
+
+    patients = User.objects.filter(
+        role="patient"
     )
-    return Response(serializer.data)
+
+    serializer = UserSerializer(
+
+        patients,
+
+        many=True
+
+    )
+
+    # ==================================================
+    # AUDITORÍA - CONSULTA DE PACIENTES
+    # ==================================================
+
+    create_audit(
+
+        user=request.user,
+
+        action="read",
+
+        module="users",
+
+        object_id=None,
+
+        description=(
+            f"El usuario {request.user.username} "
+            f"consultó la lista de pacientes."
+        ),
+
+        request=request,
+
+    )
+
+    return Response(
+
+        serializer.data,
+
+        status=status.HTTP_200_OK
+
+    )

@@ -32,7 +32,11 @@ from .models import MedicalDocument
 from .serializers import MedicalDocumentSerializer
 
 
+# ======================================================
+# AUDITORÍA
+# ======================================================
 
+from audit.services import create_audit
 
 
 # ======================================================
@@ -53,7 +57,6 @@ def documents_api(request):
     else:
 
         documents = MedicalDocument.objects.all()
-
 
 
     serializer = MedicalDocumentSerializer(
@@ -78,11 +81,6 @@ def documents_api(request):
     )
 
 
-
-
-
-
-
 # ======================================================
 # CREAR DOCUMENTO
 # ======================================================
@@ -105,9 +103,7 @@ def create_document_api(request):
     print("=" * 60 + "\n")
 
 
-
     data = request.data.copy()
-
 
 
     # ==========================================
@@ -119,9 +115,7 @@ def create_document_api(request):
         data["patient"] = request.user.id
 
 
-
     patient_id = data.get("patient")
-
 
 
     if not patient_id:
@@ -138,7 +132,6 @@ def create_document_api(request):
         )
 
 
-
     patient = get_object_or_404(
 
         User,
@@ -148,14 +141,12 @@ def create_document_api(request):
     )
 
 
-
     print(
         "👤 PACIENTE:",
         patient.username,
         "| ROL:",
         patient.role
     )
-
 
 
     # ==========================================
@@ -176,13 +167,11 @@ def create_document_api(request):
         )
 
 
-
     # ==========================================
     # VALIDAR ARCHIVO
     # ==========================================
 
     if "file" not in request.FILES:
-
 
         return Response(
 
@@ -194,7 +183,6 @@ def create_document_api(request):
             status=status.HTTP_400_BAD_REQUEST
 
         )
-
 
 
     # ==========================================
@@ -212,10 +200,7 @@ def create_document_api(request):
     )
 
 
-
     if serializer.is_valid():
-
-
 
         document = serializer.save(
 
@@ -226,12 +211,35 @@ def create_document_api(request):
         )
 
 
-
         print(
             "✅ DOCUMENTO CREADO ID:",
             document.id
         )
 
+
+        # ==========================================
+        # AUDITORÍA - SUBIR DOCUMENTO
+        # ==========================================
+
+        create_audit(
+
+            user=request.user,
+
+            action="upload",
+
+            module="documents",
+
+            object_id=document.id,
+
+            description=(
+                f"El usuario {request.user.username} "
+                f"subió el documento '{document.title}' "
+                f"para el paciente {patient.username}."
+            ),
+
+            request=request
+
+        )
 
 
         response_serializer = MedicalDocumentSerializer(
@@ -245,14 +253,12 @@ def create_document_api(request):
         )
 
 
-
         return Response(
 
             {
 
                 "message":
                 "Documento subido correctamente.",
-
 
                 "document":
                 response_serializer.data
@@ -264,12 +270,10 @@ def create_document_api(request):
         )
 
 
-
     print("\n" + "=" * 60)
     print("❌ ERROR SERIALIZER")
     print(serializer.errors)
     print("=" * 60 + "\n")
-
 
 
     return Response(
@@ -279,7 +283,6 @@ def create_document_api(request):
             "message":
             "Error de validación.",
 
-
             "errors":
             serializer.errors
 
@@ -288,11 +291,6 @@ def create_document_api(request):
         status=status.HTTP_400_BAD_REQUEST
 
     )
-
-
-
-
-
 
 
 # ======================================================
@@ -309,7 +307,6 @@ def download_document_api(
 
     if request.user.role == "patient":
 
-
         document = get_object_or_404(
 
             MedicalDocument,
@@ -320,9 +317,7 @@ def download_document_api(
 
         )
 
-
     else:
-
 
         document = get_object_or_404(
 
@@ -333,13 +328,35 @@ def download_document_api(
         )
 
 
-
     if not document.file:
 
         raise Http404(
             "El documento no tiene archivo."
         )
 
+
+    # ==========================================
+    # AUDITORÍA - DESCARGAR DOCUMENTO
+    # ==========================================
+
+    create_audit(
+
+        user=request.user,
+
+        action="download",
+
+        module="documents",
+
+        object_id=document.id,
+
+        description=(
+            f"El usuario {request.user.username} "
+            f"descargó el documento '{document.title}'."
+        ),
+
+        request=request
+
+    )
 
 
     return FileResponse(
@@ -351,11 +368,6 @@ def download_document_api(
         filename=document.file.name.split("/")[-1]
 
     )
-
-
-
-
-
 
 
 # ======================================================
@@ -393,7 +405,6 @@ def document_detail_api(
         )
 
 
-
     serializer = MedicalDocumentSerializer(
 
         document,
@@ -405,7 +416,6 @@ def document_detail_api(
     )
 
 
-
     return Response(
 
         serializer.data,
@@ -413,11 +423,6 @@ def document_detail_api(
         status=status.HTTP_200_OK
 
     )
-
-
-
-
-
 
 
 # ======================================================
@@ -441,6 +446,20 @@ def delete_document_api(
     )
 
 
+    # ==========================================
+    # GUARDAR DATOS ANTES DE ELIMINAR
+    # ==========================================
+
+    document_id_value = document.id
+
+    document_title = document.title
+
+    patient_username = document.patient.username
+
+
+    # ==========================================
+    # ELIMINAR ARCHIVO FÍSICO
+    # ==========================================
 
     if document.file:
 
@@ -451,9 +470,36 @@ def delete_document_api(
         )
 
 
+    # ==========================================
+    # ELIMINAR REGISTRO
+    # ==========================================
 
     document.delete()
 
+
+    # ==========================================
+    # AUDITORÍA - ELIMINAR DOCUMENTO
+    # ==========================================
+
+    create_audit(
+
+        user=request.user,
+
+        action="delete",
+
+        module="documents",
+
+        object_id=document_id_value,
+
+        description=(
+            f"El usuario {request.user.username} "
+            f"eliminó el documento '{document_title}' "
+            f"del paciente {patient_username}."
+        ),
+
+        request=request
+
+    )
 
 
     return Response(
