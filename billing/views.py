@@ -11,14 +11,89 @@ from audit.services import create_audit
 
 
 # =====================================================
+# ROLES AUTORIZADOS PARA FACTURACIÓN
+# =====================================================
+
+BILLING_ALLOWED_ROLES = [
+    "admin",
+    "receptionist",
+]
+
+
+# =====================================================
+# VALIDAR PERMISOS DE FACTURACIÓN
+# =====================================================
+
+def has_billing_permission(request):
+    """
+    Verifica si el usuario tiene permisos para
+    consultar o modificar información de facturación.
+    """
+
+    return request.user.role in BILLING_ALLOWED_ROLES
+
+
+# =====================================================
+# REGISTRAR ACCESO DENEGADO
+# =====================================================
+
+def audit_billing_denied(request, action):
+    """
+    Registra cualquier intento de acceso no autorizado
+    al módulo de facturación.
+    """
+
+    create_audit(
+        user=request.user,
+        action="denied",
+        module="billing",
+        object_id=None,
+        description=(
+            f"El usuario {request.user.username} "
+            f"con rol {request.user.role} "
+            f"intentó realizar la acción '{action}' "
+            f"en el módulo de facturación sin permisos."
+        ),
+        request=request
+    )
+
+
+# =====================================================
 # LISTAR FACTURAS
 # =====================================================
 
-@api_view(['GET'])
+@api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def bill_list(request):
 
-    bills = Bill.objects.all().order_by('-created_at')
+    # =================================================
+    # VALIDAR ROL
+    # =================================================
+
+    if not has_billing_permission(request):
+
+        audit_billing_denied(
+            request,
+            "consultar facturas"
+        )
+
+        return Response(
+            {
+                "detail": (
+                    "No tienes permisos para "
+                    "consultar las facturas."
+                )
+            },
+            status=status.HTTP_403_FORBIDDEN
+        )
+
+    # =================================================
+    # OBTENER FACTURAS
+    # =================================================
+
+    bills = Bill.objects.all().order_by(
+        "-created_at"
+    )
 
     serializer = BillSerializer(
         bills,
@@ -51,17 +126,38 @@ def bill_list(request):
 # CREAR FACTURA
 # =====================================================
 
-@api_view(['POST'])
+@api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def bill_create(request):
 
-    serializer = BillSerializer(
-        data=request.data
-    )
+    # =================================================
+    # VALIDAR ROL
+    # =================================================
+
+    if not has_billing_permission(request):
+
+        audit_billing_denied(
+            request,
+            "crear factura"
+        )
+
+        return Response(
+            {
+                "detail": (
+                    "No tienes permisos para "
+                    "crear facturas."
+                )
+            },
+            status=status.HTTP_403_FORBIDDEN
+        )
 
     # =================================================
     # VALIDAR INFORMACIÓN
     # =================================================
+
+    serializer = BillSerializer(
+        data=request.data
+    )
 
     if serializer.is_valid():
 
@@ -87,10 +183,6 @@ def bill_create(request):
             request=request
         )
 
-        # =============================================
-        # RESPUESTA
-        # =============================================
-
         return Response(
             serializer.data,
             status=status.HTTP_201_CREATED
@@ -110,9 +202,30 @@ def bill_create(request):
 # ACTUALIZAR FACTURA
 # =====================================================
 
-@api_view(['PATCH'])
+@api_view(["PATCH"])
 @permission_classes([IsAuthenticated])
 def bill_update(request, pk):
+
+    # =================================================
+    # VALIDAR ROL
+    # =================================================
+
+    if not has_billing_permission(request):
+
+        audit_billing_denied(
+            request,
+            "actualizar factura"
+        )
+
+        return Response(
+            {
+                "detail": (
+                    "No tienes permisos para "
+                    "actualizar facturas."
+                )
+            },
+            status=status.HTTP_403_FORBIDDEN
+        )
 
     # =================================================
     # BUSCAR FACTURA
@@ -157,10 +270,6 @@ def bill_update(request, pk):
             request=request
         )
 
-        # =============================================
-        # RESPUESTA
-        # =============================================
-
         return Response(
             serializer.data,
             status=status.HTTP_200_OK
@@ -180,9 +289,30 @@ def bill_update(request, pk):
 # ELIMINAR FACTURA
 # =====================================================
 
-@api_view(['DELETE'])
+@api_view(["DELETE"])
 @permission_classes([IsAuthenticated])
 def bill_delete(request, pk):
+
+    # =================================================
+    # VALIDAR ROL
+    # =================================================
+
+    if not has_billing_permission(request):
+
+        audit_billing_denied(
+            request,
+            "eliminar factura"
+        )
+
+        return Response(
+            {
+                "detail": (
+                    "No tienes permisos para "
+                    "eliminar facturas."
+                )
+            },
+            status=status.HTTP_403_FORBIDDEN
+        )
 
     # =================================================
     # BUSCAR FACTURA
@@ -194,7 +324,7 @@ def bill_delete(request, pk):
     )
 
     # =================================================
-    # GUARDAR INFORMACIÓN ANTES DE ELIMINAR
+    # GUARDAR ID ANTES DE ELIMINAR
     # =================================================
 
     bill_id = bill.id
@@ -227,7 +357,9 @@ def bill_delete(request, pk):
 
     return Response(
         {
-            "message": "Factura eliminada correctamente."
+            "message": (
+                "Factura eliminada correctamente."
+            )
         },
         status=status.HTTP_200_OK
     )

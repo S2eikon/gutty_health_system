@@ -17,6 +17,16 @@ from audit.services import create_audit
 
 
 # =====================================================
+# ROLES CON PERMISOS ADMINISTRATIVOS
+# =====================================================
+
+STAFF_ROLES = [
+    "admin",
+    "doctor"
+]
+
+
+# =====================================================
 # LISTAR HISTORIALES MÉDICOS
 # =====================================================
 
@@ -24,13 +34,78 @@ from audit.services import create_audit
 @permission_classes([IsAuthenticated])
 def medical_record_list(request):
 
-    records = MedicalRecord.objects.all().order_by(
-        '-created_at'
-    )
+    # =================================================
+    # ADMINISTRADORES Y DOCTORES
+    # =================================================
+
+    if request.user.role in STAFF_ROLES:
+
+        records = MedicalRecord.objects.all().order_by(
+            '-created_at'
+        )
+
+    # =================================================
+    # PACIENTES
+    # =================================================
+
+    elif request.user.role == "patient":
+
+        records = MedicalRecord.objects.filter(
+            patient=request.user
+        ).order_by(
+            '-created_at'
+        )
+
+    # =================================================
+    # OTROS ROLES
+    # =================================================
+
+    else:
+
+        create_audit(
+
+            user=request.user,
+
+            action="denied",
+
+            module="medical_records",
+
+            object_id=None,
+
+            description=(
+                f"El usuario {request.user.username} "
+                f"con rol {request.user.role} "
+                f"intentó consultar los historiales médicos "
+                f"sin permisos."
+            ),
+
+            request=request
+
+        )
+
+        return Response(
+
+            {
+                "detail": (
+                    "No tienes permisos para "
+                    "consultar los historiales médicos."
+                )
+            },
+
+            status=status.HTTP_403_FORBIDDEN
+
+        )
+
+    # =================================================
+    # SERIALIZAR
+    # =================================================
 
     serializer = MedicalRecordSerializer(
+
         records,
+
         many=True
+
     )
 
     # =================================================
@@ -48,8 +123,11 @@ def medical_record_list(request):
         object_id=None,
 
         description=(
+
             f"El usuario {request.user.username} "
-            f"consultó la lista de historiales médicos."
+            f"consultó los historiales médicos "
+            f"permitidos para su rol."
+
         ),
 
         request=request
@@ -77,8 +155,56 @@ def medical_record_list(request):
 @permission_classes([IsAuthenticated])
 def create_medical_record(request):
 
+    # =================================================
+    # VALIDAR PERMISOS
+    # =================================================
+
+    if request.user.role not in STAFF_ROLES:
+
+        create_audit(
+
+            user=request.user,
+
+            action="denied",
+
+            module="medical_records",
+
+            object_id=None,
+
+            description=(
+
+                f"El usuario {request.user.username} "
+                f"con rol {request.user.role} "
+                f"intentó crear un historial médico "
+                f"sin permisos."
+
+            ),
+
+            request=request
+
+        )
+
+        return Response(
+
+            {
+                "detail": (
+                    "No tienes permisos para "
+                    "crear historiales médicos."
+                )
+            },
+
+            status=status.HTTP_403_FORBIDDEN
+
+        )
+
+    # =================================================
+    # SERIALIZADOR
+    # =================================================
+
     serializer = MedicalRecordSerializer(
+
         data=request.data
+
     )
 
     # =================================================
@@ -108,9 +234,11 @@ def create_medical_record(request):
             object_id=record.id,
 
             description=(
+
                 f"El usuario {request.user.username} "
-                f"creó el historial médico con ID "
-                f"{record.id}."
+                f"creó el historial médico "
+                f"con ID {record.id}."
+
             ),
 
             request=request
@@ -151,13 +279,57 @@ def create_medical_record(request):
 def update_medical_record(request, pk):
 
     # =================================================
+    # VALIDAR PERMISOS
+    # =================================================
+
+    if request.user.role not in STAFF_ROLES:
+
+        create_audit(
+
+            user=request.user,
+
+            action="denied",
+
+            module="medical_records",
+
+            object_id=pk,
+
+            description=(
+
+                f"El usuario {request.user.username} "
+                f"con rol {request.user.role} "
+                f"intentó actualizar el historial médico "
+                f"con ID {pk} sin permisos."
+
+            ),
+
+            request=request
+
+        )
+
+        return Response(
+
+            {
+                "detail": (
+                    "No tienes permisos para "
+                    "actualizar historiales médicos."
+                )
+            },
+
+            status=status.HTTP_403_FORBIDDEN
+
+        )
+
+    # =================================================
     # BUSCAR HISTORIAL
     # =================================================
 
     try:
 
         record = MedicalRecord.objects.get(
+
             pk=pk
+
         )
 
     except MedicalRecord.DoesNotExist:
@@ -165,8 +337,8 @@ def update_medical_record(request, pk):
         return Response(
 
             {
-                'error':
-                'Historial no encontrado'
+                "error":
+                "Historial no encontrado"
             },
 
             status=status.HTTP_404_NOT_FOUND
@@ -210,9 +382,11 @@ def update_medical_record(request, pk):
             object_id=record.id,
 
             description=(
+
                 f"El usuario {request.user.username} "
                 f"actualizó el historial médico "
                 f"con ID {record.id}."
+
             ),
 
             request=request
@@ -253,13 +427,57 @@ def update_medical_record(request, pk):
 def delete_medical_record(request, pk):
 
     # =================================================
+    # VALIDAR PERMISOS
+    # =================================================
+
+    if request.user.role not in STAFF_ROLES:
+
+        create_audit(
+
+            user=request.user,
+
+            action="denied",
+
+            module="medical_records",
+
+            object_id=pk,
+
+            description=(
+
+                f"El usuario {request.user.username} "
+                f"con rol {request.user.role} "
+                f"intentó eliminar el historial médico "
+                f"con ID {pk} sin permisos."
+
+            ),
+
+            request=request
+
+        )
+
+        return Response(
+
+            {
+                "detail": (
+                    "No tienes permisos para "
+                    "eliminar historiales médicos."
+                )
+            },
+
+            status=status.HTTP_403_FORBIDDEN
+
+        )
+
+    # =================================================
     # BUSCAR HISTORIAL
     # =================================================
 
     try:
 
         record = MedicalRecord.objects.get(
+
             pk=pk
+
         )
 
     except MedicalRecord.DoesNotExist:
@@ -267,8 +485,8 @@ def delete_medical_record(request, pk):
         return Response(
 
             {
-                'error':
-                'Historial no encontrado'
+                "error":
+                "Historial no encontrado"
             },
 
             status=status.HTTP_404_NOT_FOUND
@@ -302,9 +520,11 @@ def delete_medical_record(request, pk):
         object_id=record_id,
 
         description=(
+
             f"El usuario {request.user.username} "
             f"eliminó el historial médico "
             f"con ID {record_id}."
+
         ),
 
         request=request
@@ -318,8 +538,8 @@ def delete_medical_record(request, pk):
     return Response(
 
         {
-            'message':
-            'Historial eliminado correctamente'
+            "message":
+            "Historial eliminado correctamente"
         },
 
         status=status.HTTP_200_OK

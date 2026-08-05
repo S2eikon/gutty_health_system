@@ -15,7 +15,7 @@ from rest_framework.decorators import (
 
 from .serializers import (
     UserProfileSerializer,
-    UserSerializer,
+    UserSerializer
 )
 
 from audit.services import create_audit
@@ -38,7 +38,9 @@ class RegisterForm(forms.ModelForm):
     )
 
     class Meta:
+
         model = User
+
         fields = [
             "username",
             "password1",
@@ -60,6 +62,7 @@ class RegisterForm(forms.ModelForm):
             and password2
             and password1 != password2
         ):
+
             raise forms.ValidationError(
                 "Las contraseñas no coinciden."
             )
@@ -77,6 +80,7 @@ class RegisterForm(forms.ModelForm):
         )
 
         if commit:
+
             user.save()
 
         return user
@@ -106,13 +110,19 @@ def register_view(request):
                 "role"
             )
 
+            # ==================================================
+            # ASIGNACIÓN DE ROL
+            # ==================================================
+
             if role in [
                 "patient",
                 "doctor"
             ]:
+
                 user.role = role
 
             else:
+
                 user.role = "patient"
 
             user.save()
@@ -132,14 +142,22 @@ def register_view(request):
                 object_id=user.id,
 
                 description=(
+
                     f"El usuario {user.username} "
+
                     f"fue registrado en el sistema "
+
                     f"con rol {user.role}."
+
                 ),
 
                 request=request,
 
             )
+
+            # ==================================================
+            # INICIAR SESIÓN
+            # ==================================================
 
             login(
                 request,
@@ -168,6 +186,7 @@ def register_view(request):
 def login_view(request):
 
     username = ""
+
     error = None
 
     if request.method == "POST":
@@ -200,7 +219,7 @@ def login_view(request):
             )
 
             # ==================================================
-            # AUDITORÍA - LOGIN
+            # AUDITORÍA - LOGIN EXITOSO
             # ==================================================
 
             create_audit(
@@ -214,8 +233,11 @@ def login_view(request):
                 object_id=user.id,
 
                 description=(
+
                     f"El usuario {user.username} "
+
                     f"inició sesión en el sistema."
+
                 ),
 
                 request=request,
@@ -223,6 +245,10 @@ def login_view(request):
             )
 
             return redirect("/")
+
+        # ==================================================
+        # LOGIN FALLIDO
+        # ==================================================
 
         error = (
             "Usuario o contraseña incorrectos."
@@ -267,8 +293,11 @@ def logout_view(request):
             object_id=user.id,
 
             description=(
+
                 f"El usuario {user.username} "
+
                 f"cerró sesión."
+
             ),
 
             request=request,
@@ -319,8 +348,11 @@ class ProfileAPIView(APIView):
             object_id=request.user.id,
 
             description=(
+
                 f"El usuario {request.user.username} "
+
                 f"consultó su perfil."
+
             ),
 
             request=request,
@@ -370,8 +402,11 @@ class ProfileAPIView(APIView):
                 object_id=user.id,
 
                 description=(
+
                     f"El usuario {request.user.username} "
+
                     f"actualizó su perfil."
+
                 ),
 
                 request=request,
@@ -385,6 +420,10 @@ class ProfileAPIView(APIView):
                 status=status.HTTP_200_OK
 
             )
+
+        # ==================================================
+        # DATOS INVÁLIDOS
+        # ==================================================
 
         return Response(
 
@@ -405,16 +444,76 @@ class ProfileAPIView(APIView):
 ])
 def patient_list_api(request):
 
+    # ==================================================
+    # VALIDACIÓN DE ROL
+    # ==================================================
+    #
+    # Solamente administradores y doctores pueden
+    # consultar la lista general de pacientes.
+    #
+    # Los pacientes autenticados no pueden consultar
+    # información de otros pacientes.
+    # ==================================================
+
+    if request.user.role not in [
+        "admin",
+        "doctor"
+    ]:
+
+        # ==================================================
+        # AUDITORÍA - ACCESO NO AUTORIZADO
+        # ==================================================
+
+        create_audit(
+
+            user=request.user,
+
+            action="denied",
+
+            module="users",
+
+            object_id=None,
+
+            description=(
+
+                f"El usuario {request.user.username} "
+
+                f"con rol {request.user.role} "
+
+                f"intentó consultar la lista de pacientes "
+
+                f"sin permisos."
+
+            ),
+
+            request=request,
+
+        )
+
+        return Response(
+
+            {
+                "detail": (
+                    "No tienes permisos para "
+                    "consultar la lista de pacientes."
+                )
+            },
+
+            status=status.HTTP_403_FORBIDDEN
+
+        )
+
+    # ==================================================
+    # OBTENER PACIENTES
+    # ==================================================
+
     patients = User.objects.filter(
         role="patient"
     )
 
     serializer = UserSerializer(
-
         patients,
-
         many=True
-
     )
 
     # ==================================================
@@ -432,8 +531,11 @@ def patient_list_api(request):
         object_id=None,
 
         description=(
+
             f"El usuario {request.user.username} "
+
             f"consultó la lista de pacientes."
+
         ),
 
         request=request,
