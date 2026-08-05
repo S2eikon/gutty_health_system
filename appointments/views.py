@@ -18,9 +18,6 @@ from users.permissions import (
 from .models import Appointment
 from .serializers import AppointmentSerializer
 
-# ======================================================
-# AUDITORÍA
-# ======================================================
 from audit.services import create_audit
 
 
@@ -32,17 +29,14 @@ from audit.services import create_audit
 @permission_classes([IsAdminDoctorPatientReceptionist])
 def appointments_api(request):
 
-    print("=" * 60)
-    print("USER:", request.user)
-    print("ROLE:", request.user.role)
-    print("AUTH HEADER:", request.headers.get("Authorization"))
-    print("=" * 60)
-
     if request.user.role == "patient":
 
         appointments = Appointment.objects.filter(
             patient=request.user
-        ).order_by("date", "time")
+        ).order_by(
+            "date",
+            "time"
+        )
 
     else:
 
@@ -54,6 +48,22 @@ def appointments_api(request):
     serializer = AppointmentSerializer(
         appointments,
         many=True
+    )
+
+    # ==================================================
+    # AUDITORÍA - CONSULTAR CITAS
+    # ==================================================
+
+    create_audit(
+        user=request.user,
+        action="read",
+        module="appointments",
+        object_id=None,
+        description=(
+            f"El usuario {request.user.username} "
+            f"consultó la lista de citas."
+        ),
+        request=request
     )
 
     return Response(
@@ -70,13 +80,6 @@ def appointments_api(request):
 @permission_classes([IsAdminOrPatient])
 def create_appointment_api(request):
 
-    print("=" * 60)
-    print("CREANDO CITA")
-    print("USER:", request.user)
-    print("ROLE:", request.user.role)
-    print("DATA:", request.data)
-    print("=" * 60)
-
     serializer = AppointmentSerializer(
         data=request.data
     )
@@ -88,17 +91,17 @@ def create_appointment_api(request):
         )
 
         # ==================================================
-        # AUDITORÍA
+        # AUDITORÍA - CREAR CITA
         # ==================================================
 
         create_audit(
             user=request.user,
             action="create",
-            module="Appointments",
+            module="appointments",
             object_id=appointment.id,
             description=(
-                f"Usuario {request.user.username} "
-                f"creó la cita {appointment.id}."
+                f"El usuario {request.user.username} "
+                f"creó la cita con ID {appointment.id}."
             ),
             request=request
         )
@@ -107,8 +110,6 @@ def create_appointment_api(request):
             serializer.data,
             status=status.HTTP_201_CREATED
         )
-
-    print(serializer.errors)
 
     return Response(
         serializer.errors,
@@ -161,17 +162,17 @@ def update_appointment_api(
             appointment = serializer.save()
 
         # ==================================================
-        # AUDITORÍA
+        # AUDITORÍA - ACTUALIZAR CITA
         # ==================================================
 
         create_audit(
             user=request.user,
             action="update",
-            module="Appointments",
+            module="appointments",
             object_id=appointment.id,
             description=(
-                f"Usuario {request.user.username} "
-                f"actualizó la cita {appointment.id}."
+                f"El usuario {request.user.username} "
+                f"actualizó la cita con ID {appointment.id}."
             ),
             request=request
         )
@@ -180,8 +181,6 @@ def update_appointment_api(
             serializer.data,
             status=status.HTTP_200_OK
         )
-
-    print(serializer.errors)
 
     return Response(
         serializer.errors,
@@ -232,17 +231,17 @@ def confirm_appointment_api(
     )
 
     # ==================================================
-    # AUDITORÍA
+    # AUDITORÍA - CONFIRMAR CITA
     # ==================================================
 
     create_audit(
         user=request.user,
         action="confirm",
-        module="Appointments",
+        module="appointments",
         object_id=appointment.id,
         description=(
-            f"Usuario {request.user.username} "
-            f"confirmó la cita {appointment.id}."
+            f"El usuario {request.user.username} "
+            f"confirmó la cita con ID {appointment.id}."
         ),
         request=request
     )
@@ -289,17 +288,17 @@ def cancel_appointment_api(
     )
 
     # ==================================================
-    # AUDITORÍA
+    # AUDITORÍA - CANCELAR CITA
     # ==================================================
 
     create_audit(
         user=request.user,
         action="cancel",
-        module="Appointments",
+        module="appointments",
         object_id=appointment.id,
         description=(
-            f"Usuario {request.user.username} "
-            f"canceló la cita {appointment.id}."
+            f"El usuario {request.user.username} "
+            f"canceló la cita con ID {appointment.id}."
         ),
         request=request
     )
@@ -339,10 +338,6 @@ def reschedule_appointment_api(
             status=status.HTTP_400_BAD_REQUEST
         )
 
-    # ==================================================
-    # ACTUALIZAR FECHA / HORA SI VIENEN EN LA PETICIÓN
-    # ==================================================
-
     serializer = AppointmentSerializer(
         appointment,
         data=request.data,
@@ -365,17 +360,17 @@ def reschedule_appointment_api(
     )
 
     # ==================================================
-    # AUDITORÍA
+    # AUDITORÍA - REPROGRAMAR CITA
     # ==================================================
 
     create_audit(
         user=request.user,
-        action="update",
-        module="Appointments",
+        action="reschedule",
+        module="appointments",
         object_id=appointment.id,
         description=(
-            f"Usuario {request.user.username} "
-            f"reprogramó la cita {appointment.id}."
+            f"El usuario {request.user.username} "
+            f"reprogramó la cita con ID {appointment.id}."
         ),
         request=request
     )
@@ -384,6 +379,7 @@ def reschedule_appointment_api(
         {
             "message":
             "Cita reprogramada correctamente.",
+
             "appointment":
             AppointmentSerializer(
                 appointment
@@ -409,24 +405,32 @@ def delete_appointment_api(
         id=appointment_id
     )
 
-    # Guardamos información antes de eliminar
+    # ==================================================
+    # GUARDAR ID ANTES DE ELIMINAR
+    # ==================================================
+
     appointment_id_deleted = appointment.id
 
     # ==================================================
-    # AUDITORÍA
+    # AUDITORÍA - ELIMINAR CITA
     # ==================================================
 
     create_audit(
         user=request.user,
         action="delete",
-        module="Appointments",
+        module="appointments",
         object_id=appointment_id_deleted,
         description=(
-            f"Usuario {request.user.username} "
-            f"eliminó la cita {appointment_id_deleted}."
+            f"El usuario {request.user.username} "
+            f"eliminó la cita con ID "
+            f"{appointment_id_deleted}."
         ),
         request=request
     )
+
+    # ==================================================
+    # ELIMINAR CITA
+    # ==================================================
 
     appointment.delete()
 
@@ -483,6 +487,23 @@ def dashboard_totals_api(request):
         ).count(),
 
     }
+
+    # ==================================================
+    # AUDITORÍA - DASHBOARD
+    # ==================================================
+
+    create_audit(
+        user=request.user,
+        action="read",
+        module="appointments",
+        object_id=None,
+        description=(
+            f"El usuario {request.user.username} "
+            f"consultó el resumen del dashboard "
+            f"de citas."
+        ),
+        request=request
+    )
 
     return Response(
         data,
@@ -616,6 +637,22 @@ def calendar_appointments_api(request):
 
         })
 
+    # ==================================================
+    # AUDITORÍA - CALENDARIO
+    # ==================================================
+
+    create_audit(
+        user=request.user,
+        action="read",
+        module="appointments",
+        object_id=None,
+        description=(
+            f"El usuario {request.user.username} "
+            f"consultó el calendario de citas."
+        ),
+        request=request
+    )
+
     return Response(
         events,
         status=status.HTTP_200_OK
@@ -640,7 +677,6 @@ def send_pending_reminders_api(request):
     for appointment in appointments:
 
         if not appointment.patient.email:
-
             continue
 
         doctor_name = "Sin asignar"
@@ -691,7 +727,7 @@ Instituto Médico Asdrúbal Gutty
         enviados += 1
 
     # ==================================================
-    # AUDITORÍA
+    # AUDITORÍA - RECORDATORIOS MASIVOS
     # ==================================================
 
     if enviados > 0:
@@ -699,9 +735,10 @@ Instituto Médico Asdrúbal Gutty
         create_audit(
             user=request.user,
             action="response",
-            module="Appointments",
+            module="appointments",
+            object_id=None,
             description=(
-                f"Usuario {request.user.username} "
+                f"El usuario {request.user.username} "
                 f"envió {enviados} recordatorio(s) "
                 f"de citas médicas."
             ),
@@ -795,16 +832,16 @@ Instituto Médico Asdrúbal Gutty
     )
 
     # ==================================================
-    # AUDITORÍA
+    # AUDITORÍA - RECORDATORIO INDIVIDUAL
     # ==================================================
 
     create_audit(
         user=request.user,
         action="response",
-        module="Appointments",
+        module="appointments",
         object_id=appointment.id,
         description=(
-            f"Usuario {request.user.username} "
+            f"El usuario {request.user.username} "
             f"envió un recordatorio para la cita "
             f"{appointment.id}."
         ),

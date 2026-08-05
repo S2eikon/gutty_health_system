@@ -1,225 +1,110 @@
 from django.shortcuts import get_object_or_404
-from django.http import FileResponse, Http404
-
-
-from rest_framework import status
-from rest_framework.response import Response
-
+from django.http import FileResponse
 
 from rest_framework.decorators import (
     api_view,
-    permission_classes,
-    parser_classes
+    permission_classes
 )
-
-
-from rest_framework.parsers import (
-    MultiPartParser,
-    FormParser
-)
-
-
-from users.permissions import (
-    IsAdmin,
-    IsAdminDoctorPatientReceptionist,
-)
-
-
-from users.models import User
-
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework import status
 
 from .models import MedicalDocument
 from .serializers import MedicalDocumentSerializer
 
-
-# ======================================================
-# AUDITORÍA
-# ======================================================
-
 from audit.services import create_audit
 
 
-# ======================================================
+# =====================================================
 # LISTAR DOCUMENTOS
-# ======================================================
+# =====================================================
 
 @api_view(["GET"])
-@permission_classes([IsAdminDoctorPatientReceptionist])
+@permission_classes([IsAuthenticated])
 def documents_api(request):
 
+    # =================================================
+    # OBTENER DOCUMENTOS
+    # =================================================
 
     if request.user.role == "patient":
 
         documents = MedicalDocument.objects.filter(
             patient=request.user
-        )
+        ).order_by("-uploaded_at")
 
     else:
 
-        documents = MedicalDocument.objects.all()
-
+        documents = MedicalDocument.objects.all().order_by(
+            "-uploaded_at"
+        )
 
     serializer = MedicalDocumentSerializer(
-
-        documents.order_by("-uploaded_at"),
-
-        many=True,
-
-        context={
-            "request": request
-        }
-
+        documents,
+        many=True
     )
 
+    # =================================================
+    # AUDITORÍA - CONSULTAR DOCUMENTOS
+    # =================================================
+
+    create_audit(
+
+        user=request.user,
+
+        action="read",
+
+        module="documents",
+
+        object_id=None,
+
+        description=(
+            f"El usuario {request.user.username} "
+            f"consultó la lista de documentos médicos."
+        ),
+
+        request=request
+    )
+
+    # =================================================
+    # RESPUESTA
+    # =================================================
 
     return Response(
-
         serializer.data,
-
         status=status.HTTP_200_OK
-
     )
 
 
-# ======================================================
-# CREAR DOCUMENTO
-# ======================================================
+# =====================================================
+# SUBIR / CREAR DOCUMENTO
+# =====================================================
 
 @api_view(["POST"])
-@permission_classes([IsAdminDoctorPatientReceptionist])
-@parser_classes([
-    MultiPartParser,
-    FormParser
-])
+@permission_classes([IsAuthenticated])
 def create_document_api(request):
 
-
-    print("\n" + "=" * 60)
-    print("📤 CREANDO DOCUMENTO")
-    print("USUARIO:", request.user.username)
-    print("ROL:", request.user.role)
-    print("DATA:", request.data)
-    print("FILES:", request.FILES)
-    print("=" * 60 + "\n")
-
-
-    data = request.data.copy()
-
-
-    # ==========================================
-    # PACIENTE SUBE SU PROPIO DOCUMENTO
-    # ==========================================
-
-    if request.user.role == "patient":
-
-        data["patient"] = request.user.id
-
-
-    patient_id = data.get("patient")
-
-
-    if not patient_id:
-
-        return Response(
-
-            {
-                "error":
-                "Debe seleccionar un paciente."
-            },
-
-            status=status.HTTP_400_BAD_REQUEST
-
-        )
-
-
-    patient = get_object_or_404(
-
-        User,
-
-        id=patient_id
-
-    )
-
-
-    print(
-        "👤 PACIENTE:",
-        patient.username,
-        "| ROL:",
-        patient.role
-    )
-
-
-    # ==========================================
-    # VALIDAR PACIENTE
-    # ==========================================
-
-    if patient.role != "patient":
-
-        return Response(
-
-            {
-                "error":
-                f"El usuario {patient.username} no tiene rol paciente."
-            },
-
-            status=status.HTTP_400_BAD_REQUEST
-
-        )
-
-
-    # ==========================================
-    # VALIDAR ARCHIVO
-    # ==========================================
-
-    if "file" not in request.FILES:
-
-        return Response(
-
-            {
-                "error":
-                "Debe adjuntar un archivo."
-            },
-
-            status=status.HTTP_400_BAD_REQUEST
-
-        )
-
-
-    # ==========================================
-    # SERIALIZER
-    # ==========================================
+    # =================================================
+    # VALIDAR INFORMACIÓN
+    # =================================================
 
     serializer = MedicalDocumentSerializer(
-
-        data=data,
-
-        context={
-            "request": request
-        }
-
+        data=request.data
     )
-
 
     if serializer.is_valid():
 
+        # =============================================
+        # GUARDAR DOCUMENTO
+        # =============================================
+
         document = serializer.save(
-
-            uploaded_by=request.user,
-
-            patient=patient
-
+            uploaded_by=request.user
         )
 
-
-        print(
-            "✅ DOCUMENTO CREADO ID:",
-            document.id
-        )
-
-
-        # ==========================================
-        # AUDITORÍA - SUBIR DOCUMENTO
-        # ==========================================
+        # =============================================
+        # AUDITORÍA - CREAR DOCUMENTO
+        # =============================================
 
         create_audit(
 
@@ -233,111 +118,142 @@ def create_document_api(request):
 
             description=(
                 f"El usuario {request.user.username} "
-                f"subió el documento '{document.title}' "
-                f"para el paciente {patient.username}."
+                f"subió el documento "
+                f"'{document.title}' "
+                f"con ID {document.id}."
             ),
 
             request=request
-
         )
 
-
-        response_serializer = MedicalDocumentSerializer(
-
-            document,
-
-            context={
-                "request": request
-            }
-
-        )
-
+        # =============================================
+        # RESPUESTA
+        # =============================================
 
         return Response(
 
             {
-
                 "message":
                 "Documento subido correctamente.",
 
                 "document":
-                response_serializer.data
-
+                MedicalDocumentSerializer(
+                    document
+                ).data
             },
 
             status=status.HTTP_201_CREATED
-
         )
 
-
-    print("\n" + "=" * 60)
-    print("❌ ERROR SERIALIZER")
-    print(serializer.errors)
-    print("=" * 60 + "\n")
-
+    # =================================================
+    # ERROR DE VALIDACIÓN
+    # =================================================
 
     return Response(
 
-        {
-
-            "message":
-            "Error de validación.",
-
-            "errors":
-            serializer.errors
-
-        },
+        serializer.errors,
 
         status=status.HTTP_400_BAD_REQUEST
-
     )
 
 
-# ======================================================
-# DESCARGAR DOCUMENTO
-# ======================================================
+# =====================================================
+# DETALLE DE DOCUMENTO
+# =====================================================
 
 @api_view(["GET"])
-@permission_classes([IsAdminDoctorPatientReceptionist])
-def download_document_api(
-    request,
-    document_id
-):
+@permission_classes([IsAuthenticated])
+def document_detail_api(request, document_id):
+
+    # =================================================
+    # BUSCAR DOCUMENTO
+    # =================================================
+
+    document = get_object_or_404(
+        MedicalDocument,
+        id=document_id
+    )
+
+    # =================================================
+    # SERIALIZAR
+    # =================================================
+
+    serializer = MedicalDocumentSerializer(
+        document
+    )
+
+    # =================================================
+    # AUDITORÍA - CONSULTAR DETALLE
+    # =================================================
+
+    create_audit(
+
+        user=request.user,
+
+        action="read",
+
+        module="documents",
+
+        object_id=document.id,
+
+        description=(
+            f"El usuario {request.user.username} "
+            f"consultó el documento "
+            f"'{document.title}' "
+            f"con ID {document.id}."
+        ),
+
+        request=request
+    )
+
+    # =================================================
+    # RESPUESTA
+    # =================================================
+
+    return Response(
+
+        serializer.data,
+
+        status=status.HTTP_200_OK
+    )
 
 
-    if request.user.role == "patient":
+# =====================================================
+# DESCARGAR DOCUMENTO
+# =====================================================
 
-        document = get_object_or_404(
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def download_document_api(request, document_id):
 
-            MedicalDocument,
+    # =================================================
+    # BUSCAR DOCUMENTO
+    # =================================================
 
-            id=document_id,
+    document = get_object_or_404(
+        MedicalDocument,
+        id=document_id
+    )
 
-            patient=request.user
-
-        )
-
-    else:
-
-        document = get_object_or_404(
-
-            MedicalDocument,
-
-            id=document_id
-
-        )
-
+    # =================================================
+    # VERIFICAR ARCHIVO
+    # =================================================
 
     if not document.file:
 
-        raise Http404(
-            "El documento no tiene archivo."
+        return Response(
+
+            {
+                "error":
+                "El documento no tiene un archivo asociado."
+            },
+
+            status=status.HTTP_404_NOT_FOUND
         )
 
-
-    # ==========================================
+    # =================================================
     # AUDITORÍA - DESCARGAR DOCUMENTO
-    # ==========================================
+    # =================================================
 
     create_audit(
 
@@ -351,135 +267,101 @@ def download_document_api(
 
         description=(
             f"El usuario {request.user.username} "
-            f"descargó el documento '{document.title}'."
+            f"descargó el documento "
+            f"'{document.title}' "
+            f"con ID {document.id}."
         ),
 
         request=request
-
     )
 
+    # =================================================
+    # RESPUESTA DE ARCHIVO
+    # =================================================
 
-    return FileResponse(
+    try:
 
-        document.file.open("rb"),
-
-        as_attachment=True,
-
-        filename=document.file.name.split("/")[-1]
-
-    )
-
-
-# ======================================================
-# DETALLE DOCUMENTO
-# ======================================================
-
-@api_view(["GET"])
-@permission_classes([IsAdminDoctorPatientReceptionist])
-def document_detail_api(
-    request,
-    document_id
-):
-
-
-    if request.user.role == "patient":
-
-        document = get_object_or_404(
-
-            MedicalDocument,
-
-            id=document_id,
-
-            patient=request.user
-
+        response = FileResponse(
+            document.file.open("rb"),
+            as_attachment=True,
+            filename=document.file.name.split("/")[-1]
         )
 
-    else:
+        return response
 
-        document = get_object_or_404(
+    except FileNotFoundError:
 
-            MedicalDocument,
+        return Response(
 
-            id=document_id
+            {
+                "error":
+                "El archivo físico no existe."
+            },
 
+            status=status.HTTP_404_NOT_FOUND
         )
 
 
-    serializer = MedicalDocumentSerializer(
-
-        document,
-
-        context={
-            "request": request
-        }
-
-    )
-
-
-    return Response(
-
-        serializer.data,
-
-        status=status.HTTP_200_OK
-
-    )
-
-
-# ======================================================
+# =====================================================
 # ELIMINAR DOCUMENTO
-# ======================================================
+# =====================================================
 
 @api_view(["DELETE"])
-@permission_classes([IsAdmin])
-def delete_document_api(
-    request,
-    document_id
-):
+@permission_classes([IsAuthenticated])
+def delete_document_api(request, document_id):
 
+    # =================================================
+    # BUSCAR DOCUMENTO
+    # =================================================
 
     document = get_object_or_404(
-
         MedicalDocument,
-
         id=document_id
-
     )
 
-
-    # ==========================================
-    # GUARDAR DATOS ANTES DE ELIMINAR
-    # ==========================================
+    # =================================================
+    # GUARDAR INFORMACIÓN ANTES DE ELIMINAR
+    # =================================================
 
     document_id_value = document.id
-
     document_title = document.title
 
-    patient_username = document.patient.username
-
-
-    # ==========================================
+    # =================================================
     # ELIMINAR ARCHIVO FÍSICO
-    # ==========================================
+    # =================================================
 
     if document.file:
 
-        document.file.delete(
+        try:
 
-            save=False
+            document.file.delete(
+                save=False
+            )
 
-        )
+        except PermissionError:
 
+            return Response(
 
-    # ==========================================
-    # ELIMINAR REGISTRO
-    # ==========================================
+                {
+                    "error": (
+                        "No se pudo eliminar el archivo "
+                        "porque está siendo utilizado "
+                        "por otro proceso."
+                    )
+                },
+
+                status=status.HTTP_409_CONFLICT
+            )
+
+    # =================================================
+    # ELIMINAR REGISTRO DE BASE DE DATOS
+    # =================================================
 
     document.delete()
 
-
-    # ==========================================
+    # =================================================
     # AUDITORÍA - ELIMINAR DOCUMENTO
-    # ==========================================
+    # =================================================
 
     create_audit(
 
@@ -493,24 +375,24 @@ def delete_document_api(
 
         description=(
             f"El usuario {request.user.username} "
-            f"eliminó el documento '{document_title}' "
-            f"del paciente {patient_username}."
+            f"eliminó el documento "
+            f"'{document_title}' "
+            f"con ID {document_id_value}."
         ),
 
         request=request
-
     )
 
+    # =================================================
+    # RESPUESTA
+    # =================================================
 
     return Response(
 
         {
-
             "message":
             "Documento eliminado correctamente."
-
         },
 
         status=status.HTTP_200_OK
-
     )

@@ -304,6 +304,29 @@ class ProfileAPIView(APIView):
             request.user
         )
 
+        # ==================================================
+        # AUDITORÍA - CONSULTAR PERFIL
+        # ==================================================
+
+        create_audit(
+
+            user=request.user,
+
+            action="read",
+
+            module="users",
+
+            object_id=request.user.id,
+
+            description=(
+                f"El usuario {request.user.username} "
+                f"consultó su perfil."
+            ),
+
+            request=request,
+
+        )
+
         return Response(
 
             serializer.data,
@@ -424,3 +447,4 @@ def patient_list_api(request):
         status=status.HTTP_200_OK
 
     )
+

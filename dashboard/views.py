@@ -4,24 +4,50 @@ from rest_framework.response import Response
 
 from appointments.models import Appointment
 
+from audit.services import create_audit
+
+
+# =====================================================
+# DASHBOARD - CITAS POR ESTADO
+# =====================================================
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def citas_por_estado(request):
 
+    # =================================================
+    # TOTAL DE CITAS
+    # =================================================
+
     total = Appointment.objects.count()
+
+    # =================================================
+    # CITAS CONFIRMADAS
+    # =================================================
 
     confirmed = Appointment.objects.filter(
         status="confirmed"
     ).count()
 
+    # =================================================
+    # CITAS PENDIENTES
+    # =================================================
+
     pending = Appointment.objects.filter(
         status="pending"
     ).count()
 
+    # =================================================
+    # CITAS CANCELADAS
+    # =================================================
+
     cancelled = Appointment.objects.filter(
         status="cancelled"
     ).count()
+
+    # =================================================
+    # CALCULAR PORCENTAJES
+    # =================================================
 
     data = {
 
@@ -47,4 +73,35 @@ def citas_por_estado(request):
 
     }
 
-    return Response(data)
+    # =================================================
+    # AUDITORÍA - CONSULTAR DASHBOARD
+    # =================================================
+
+    create_audit(
+
+        user=request.user,
+
+        action="read",
+
+        module="dashboard",
+
+        object_id=None,
+
+        description=(
+            f"El usuario {request.user.username} "
+            f"consultó las estadísticas de citas "
+            f"del dashboard."
+        ),
+
+        request=request
+
+    )
+
+    # =================================================
+    # RESPUESTA
+    # =================================================
+
+    return Response(
+        data
+    )
+

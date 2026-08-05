@@ -1,9 +1,16 @@
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import (
+    api_view,
+    permission_classes
+)
+
 from rest_framework.permissions import IsAuthenticated
+
 from rest_framework.response import Response
+
 from rest_framework import status
 
 from .models import MedicalRecord
+
 from .serializers import MedicalRecordSerializer
 
 from audit.services import create_audit
@@ -17,16 +24,48 @@ from audit.services import create_audit
 @permission_classes([IsAuthenticated])
 def medical_record_list(request):
 
-    records = MedicalRecord.objects.all().order_by('-created_at')
+    records = MedicalRecord.objects.all().order_by(
+        '-created_at'
+    )
 
     serializer = MedicalRecordSerializer(
         records,
         many=True
     )
 
+    # =================================================
+    # AUDITORÍA - CONSULTAR HISTORIALES
+    # =================================================
+
+    create_audit(
+
+        user=request.user,
+
+        action="read",
+
+        module="medical_records",
+
+        object_id=None,
+
+        description=(
+            f"El usuario {request.user.username} "
+            f"consultó la lista de historiales médicos."
+        ),
+
+        request=request
+
+    )
+
+    # =================================================
+    # RESPUESTA
+    # =================================================
+
     return Response(
+
         serializer.data,
+
         status=status.HTTP_200_OK
+
     )
 
 

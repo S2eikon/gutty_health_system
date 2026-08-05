@@ -16,13 +16,17 @@ from .serializers import PQRSerializer
 from audit.services import create_audit
 
 
-# ======================================================
+# =====================================================
 # LISTAR PQR
-# ======================================================
+# =====================================================
 
 @api_view(["GET"])
 @permission_classes([IsAdminDoctorPatientReceptionist])
 def pqr_api(request):
+
+    # =================================================
+    # OBTENER PQR SEGÚN EL ROL
+    # =================================================
 
     if request.user.role == "patient":
 
@@ -34,10 +38,34 @@ def pqr_api(request):
 
         pqrs = PQR.objects.all()
 
+    # =================================================
+    # SERIALIZAR INFORMACIÓN
+    # =================================================
+
     serializer = PQRSerializer(
         pqrs.order_by("-created_at"),
         many=True
     )
+
+    # =================================================
+    # AUDITORÍA - CONSULTAR PQR
+    # =================================================
+
+    create_audit(
+        user=request.user,
+        action="read",
+        module="pqr",
+        object_id=None,
+        description=(
+            f"El usuario {request.user.username} "
+            f"consultó la lista de PQR."
+        ),
+        request=request
+    )
+
+    # =================================================
+    # RESPUESTA
+    # =================================================
 
     return Response(
         serializer.data,
@@ -45,9 +73,9 @@ def pqr_api(request):
     )
 
 
-# ======================================================
+# =====================================================
 # CREAR PQR
-# ======================================================
+# =====================================================
 
 @api_view(["POST"])
 @permission_classes([IsAdminDoctorPatientReceptionist])
@@ -57,40 +85,49 @@ def create_pqr_api(request):
         data=request.data
     )
 
+    # =================================================
+    # VALIDAR INFORMACIÓN
+    # =================================================
+
     if serializer.is_valid():
+
+        # =============================================
+        # CREAR PQR
+        # =============================================
 
         pqr = serializer.save(
             user=request.user,
             status="open"
         )
 
-        # ==============================================
+        # =============================================
         # AUDITORÍA - CREAR PQR
-        # ==============================================
+        # =============================================
 
         create_audit(
-
             user=request.user,
-
             action="create",
-
             module="pqr",
-
             object_id=pqr.id,
-
             description=(
                 f"El usuario {request.user.username} "
                 f"creó la PQR con ID {pqr.id}."
             ),
-
             request=request
-
         )
+
+        # =============================================
+        # RESPUESTA
+        # =============================================
 
         return Response(
             serializer.data,
             status=status.HTTP_201_CREATED
         )
+
+    # =================================================
+    # ERROR DE VALIDACIÓN
+    # =================================================
 
     return Response(
         serializer.errors,
@@ -98,13 +135,17 @@ def create_pqr_api(request):
     )
 
 
-# ======================================================
+# =====================================================
 # DETALLE PQR
-# ======================================================
+# =====================================================
 
 @api_view(["GET"])
 @permission_classes([IsAdminDoctorPatientReceptionist])
 def pqr_detail_api(request, pqr_id):
+
+    # =================================================
+    # BUSCAR PQR SEGÚN EL ROL
+    # =================================================
 
     if request.user.role == "patient":
 
@@ -121,9 +162,34 @@ def pqr_detail_api(request, pqr_id):
             id=pqr_id
         )
 
+    # =================================================
+    # SERIALIZAR
+    # =================================================
+
     serializer = PQRSerializer(
         pqr
     )
+
+    # =================================================
+    # AUDITORÍA - CONSULTAR DETALLE
+    # =================================================
+
+    create_audit(
+        user=request.user,
+        action="read",
+        module="pqr",
+        object_id=pqr.id,
+        description=(
+            f"El usuario {request.user.username} "
+            f"consultó el detalle de la PQR "
+            f"con ID {pqr.id}."
+        ),
+        request=request
+    )
+
+    # =================================================
+    # RESPUESTA
+    # =================================================
 
     return Response(
         serializer.data,
@@ -131,22 +197,34 @@ def pqr_detail_api(request, pqr_id):
     )
 
 
-# ======================================================
+# =====================================================
 # RESPONDER PQR
-# ======================================================
+# =====================================================
 
 @api_view(["PUT"])
 @permission_classes([IsAdmin])
 def respond_pqr_api(request, pqr_id):
+
+    # =================================================
+    # BUSCAR PQR
+    # =================================================
 
     pqr = get_object_or_404(
         PQR,
         id=pqr_id
     )
 
+    # =================================================
+    # OBTENER RESPUESTA
+    # =================================================
+
     response_text = request.data.get(
         "response"
     )
+
+    # =================================================
+    # VALIDAR RESPUESTA
+    # =================================================
 
     if not response_text:
 
@@ -157,6 +235,10 @@ def respond_pqr_api(request, pqr_id):
             },
             status=status.HTTP_400_BAD_REQUEST
         )
+
+    # =================================================
+    # ACTUALIZAR PQR
+    # =================================================
 
     pqr.response = response_text
 
@@ -171,32 +253,34 @@ def respond_pqr_api(request, pqr_id):
 
     pqr.save()
 
-    # ==============================================
-    # AUDITORÍA - RESPONDER PQR
-    # ==============================================
+    # =================================================
+    # AUDITORÍA - ACTUALIZAR PQR
+    # =================================================
 
     create_audit(
-
         user=request.user,
-
-        action="response",
-
+        action="update",
         module="pqr",
-
         object_id=pqr.id,
-
         description=(
             f"El usuario {request.user.username} "
-            f"respondió la PQR con ID {pqr.id}."
+            f"respondió y actualizó la PQR "
+            f"con ID {pqr.id}."
         ),
-
         request=request
-
     )
+
+    # =================================================
+    # SERIALIZAR
+    # =================================================
 
     serializer = PQRSerializer(
         pqr
     )
+
+    # =================================================
+    # RESPUESTA
+    # =================================================
 
     return Response(
         serializer.data,
@@ -204,54 +288,55 @@ def respond_pqr_api(request, pqr_id):
     )
 
 
-# ======================================================
+# =====================================================
 # ELIMINAR PQR
-# ======================================================
+# =====================================================
 
 @api_view(["DELETE"])
 @permission_classes([IsAdmin])
 def delete_pqr_api(request, pqr_id):
+
+    # =================================================
+    # BUSCAR PQR
+    # =================================================
 
     pqr = get_object_or_404(
         PQR,
         id=pqr_id
     )
 
-    # ==============================================
+    # =================================================
     # GUARDAR ID ANTES DE ELIMINAR
-    # ==============================================
+    # =================================================
 
     pqr_id_deleted = pqr.id
 
-    # ==============================================
-    # ELIMINAR PQR
-    # ==============================================
-
-    pqr.delete()
-
-    # ==============================================
+    # =================================================
     # AUDITORÍA - ELIMINAR PQR
-    # ==============================================
+    # =================================================
 
     create_audit(
-
         user=request.user,
-
         action="delete",
-
         module="pqr",
-
         object_id=pqr_id_deleted,
-
         description=(
             f"El usuario {request.user.username} "
             f"eliminó la PQR con ID "
             f"{pqr_id_deleted}."
         ),
-
         request=request
-
     )
+
+    # =================================================
+    # ELIMINAR PQR
+    # =================================================
+
+    pqr.delete()
+
+    # =================================================
+    # RESPUESTA
+    # =================================================
 
     return Response(
         {
@@ -260,3 +345,4 @@ def delete_pqr_api(request, pqr_id):
         },
         status=status.HTTP_200_OK
     )
+
