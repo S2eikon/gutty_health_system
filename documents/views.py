@@ -16,6 +16,31 @@ from audit.services import create_audit
 
 
 # =====================================================
+# PAGINACIÓN DE DOCUMENTOS
+# =====================================================
+
+from rest_framework.pagination import PageNumberPagination
+
+
+class DocumentPagination(PageNumberPagination):
+    """
+    Paginación para documentos médicos.
+
+    Por defecto:
+    - 5 documentos por página.
+
+    El cliente puede solicitar otra cantidad mediante:
+    ?page_size=10
+
+    Se limita a un máximo de 20 documentos por página.
+    """
+
+    page_size = 5
+    page_size_query_param = "page_size"
+    max_page_size = 20
+
+
+# =====================================================
 # LISTAR DOCUMENTOS
 # =====================================================
 
@@ -39,13 +64,39 @@ def documents_api(request):
             "-uploaded_at"
         )
 
-    serializer = MedicalDocumentSerializer(
+        # =============================================
+        # FILTRAR POR PACIENTE
+        # =============================================
+
+        patient_id = request.query_params.get("patient")
+
+        if patient_id:
+
+            documents = documents.filter(
+                patient_id=patient_id
+            )
+
+    # =================================================
+    # PAGINACIÓN
+    # =================================================
+
+    paginator = DocumentPagination()
+
+    page = paginator.paginate_queryset(
         documents,
-        many=True
+        request
+    )
+
+    serializer = MedicalDocumentSerializer(
+        page,
+        many=True,
+        context={
+            "request": request
+        }
     )
 
     # =================================================
-    # AUDITORÍA - CONSULTAR DOCUMENTOS
+    # AUDITORÍA
     # =================================================
 
     create_audit(
@@ -60,19 +111,19 @@ def documents_api(request):
 
         description=(
             f"El usuario {request.user.username} "
-            f"consultó la lista de documentos médicos."
+            f"consultó la lista de documentos médicos. "
+            f"Página {request.query_params.get('page', '1')}."
         ),
 
         request=request
     )
 
     # =================================================
-    # RESPUESTA
+    # RESPUESTA PAGINADA
     # =================================================
 
-    return Response(
-        serializer.data,
-        status=status.HTTP_200_OK
+    return paginator.get_paginated_response(
+        serializer.data
     )
 
 
@@ -84,27 +135,19 @@ def documents_api(request):
 @permission_classes([IsAuthenticated])
 def create_document_api(request):
 
-    # =================================================
-    # VALIDAR INFORMACIÓN
-    # =================================================
-
     serializer = MedicalDocumentSerializer(
         data=request.data
     )
 
     if serializer.is_valid():
 
-        # =============================================
-        # GUARDAR DOCUMENTO
-        # =============================================
-
         document = serializer.save(
             uploaded_by=request.user
         )
 
-        # =============================================
-        # AUDITORÍA - CREAR DOCUMENTO
-        # =============================================
+        # =================================================
+        # AUDITORÍA
+        # =================================================
 
         create_audit(
 
@@ -126,10 +169,6 @@ def create_document_api(request):
             request=request
         )
 
-        # =============================================
-        # RESPUESTA
-        # =============================================
-
         return Response(
 
             {
@@ -138,16 +177,15 @@ def create_document_api(request):
 
                 "document":
                 MedicalDocumentSerializer(
-                    document
+                    document,
+                    context={
+                        "request": request
+                    }
                 ).data
             },
 
             status=status.HTTP_201_CREATED
         )
-
-    # =================================================
-    # ERROR DE VALIDACIÓN
-    # =================================================
 
     return Response(
 
@@ -165,25 +203,62 @@ def create_document_api(request):
 @permission_classes([IsAuthenticated])
 def document_detail_api(request, document_id):
 
-    # =================================================
-    # BUSCAR DOCUMENTO
-    # =================================================
-
     document = get_object_or_404(
         MedicalDocument,
         id=document_id
     )
 
     # =================================================
-    # SERIALIZAR
+    # SEGURIDAD
     # =================================================
 
+    if request.user.role == "patient":
+
+        if document.patient_id != request.user.id:
+
+            create_audit(
+
+                user=request.user,
+
+                action="denied",
+
+                module="documents",
+
+                object_id=document.id,
+
+                description=(
+                    f"El usuario {request.user.username} "
+                    f"intentó consultar el documento "
+                    f"'{document.title}' "
+                    f"con ID {document.id} "
+                    f"sin permisos."
+                ),
+
+                request=request
+            )
+
+            return Response(
+
+                {
+                    "detail":
+                    "No tiene permisos para consultar este documento."
+                },
+
+                status=status.HTTP_403_FORBIDDEN
+            )
+
     serializer = MedicalDocumentSerializer(
-        document
+
+        document,
+
+        context={
+            "request": request
+        }
+
     )
 
     # =================================================
-    # AUDITORÍA - CONSULTAR DETALLE
+    # AUDITORÍA
     # =================================================
 
     create_audit(
@@ -206,10 +281,6 @@ def document_detail_api(request, document_id):
         request=request
     )
 
-    # =================================================
-    # RESPUESTA
-    # =================================================
-
     return Response(
 
         serializer.data,
@@ -219,21 +290,56 @@ def document_detail_api(request, document_id):
 
 
 # =====================================================
-# DESCARGAR DOCUMENTO
+# DESCARGAR / VISUALIZAR DOCUMENTO
 # =====================================================
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def download_document_api(request, document_id):
 
-    # =================================================
-    # BUSCAR DOCUMENTO
-    # =================================================
-
     document = get_object_or_404(
         MedicalDocument,
         id=document_id
     )
+
+    # =================================================
+    # SEGURIDAD
+    # =================================================
+
+    if request.user.role == "patient":
+
+        if document.patient_id != request.user.id:
+
+            create_audit(
+
+                user=request.user,
+
+                action="denied",
+
+                module="documents",
+
+                object_id=document.id,
+
+                description=(
+                    f"El usuario {request.user.username} "
+                    f"intentó acceder al archivo del documento "
+                    f"'{document.title}' "
+                    f"con ID {document.id} "
+                    f"sin permisos."
+                ),
+
+                request=request
+            )
+
+            return Response(
+
+                {
+                    "detail":
+                    "No tiene permisos para acceder a este documento."
+                },
+
+                status=status.HTTP_403_FORBIDDEN
+            )
 
     # =================================================
     # VERIFICAR ARCHIVO
@@ -252,7 +358,7 @@ def download_document_api(request, document_id):
         )
 
     # =================================================
-    # AUDITORÍA - DESCARGAR DOCUMENTO
+    # AUDITORÍA
     # =================================================
 
     create_audit(
@@ -267,7 +373,7 @@ def download_document_api(request, document_id):
 
         description=(
             f"El usuario {request.user.username} "
-            f"descargó el documento "
+            f"accedió al archivo del documento "
             f"'{document.title}' "
             f"con ID {document.id}."
         ),
@@ -276,16 +382,62 @@ def download_document_api(request, document_id):
     )
 
     # =================================================
-    # RESPUESTA DE ARCHIVO
+    # ABRIR ARCHIVO EN EL NAVEGADOR
     # =================================================
 
     try:
 
+        file_handle = document.file.open("rb")
+
         response = FileResponse(
-            document.file.open("rb"),
-            as_attachment=True,
+
+            file_handle,
+
+            as_attachment=False,
+
             filename=document.file.name.split("/")[-1]
+
         )
+
+        # =================================================
+        # IMPORTANTE:
+        # INLINE permite visualizar PDF/JPG/PNG
+        # directamente en el navegador.
+        # =================================================
+
+        response["Content-Disposition"] = (
+            f'inline; filename="{document.file.name.split("/")[-1]}"'
+        )
+
+        # =================================================
+        # DETECTAR TIPO DE ARCHIVO
+        # =================================================
+
+        file_name = document.file.name.lower()
+
+        if file_name.endswith(".pdf"):
+
+            response["Content-Type"] = "application/pdf"
+
+        elif file_name.endswith(".jpg") or file_name.endswith(".jpeg"):
+
+            response["Content-Type"] = "image/jpeg"
+
+        elif file_name.endswith(".png"):
+
+            response["Content-Type"] = "image/png"
+
+        elif file_name.endswith(".gif"):
+
+            response["Content-Type"] = "image/gif"
+
+        elif file_name.endswith(".webp"):
+
+            response["Content-Type"] = "image/webp"
+
+        else:
+
+            response["Content-Type"] = "application/octet-stream"
 
         return response
 
@@ -295,7 +447,7 @@ def download_document_api(request, document_id):
 
             {
                 "error":
-                "El archivo físico no existe."
+                "El archivo físico no existe en el servidor."
             },
 
             status=status.HTTP_404_NOT_FOUND
@@ -310,20 +462,56 @@ def download_document_api(request, document_id):
 @permission_classes([IsAuthenticated])
 def delete_document_api(request, document_id):
 
-    # =================================================
-    # BUSCAR DOCUMENTO
-    # =================================================
-
     document = get_object_or_404(
         MedicalDocument,
         id=document_id
     )
 
     # =================================================
-    # GUARDAR INFORMACIÓN ANTES DE ELIMINAR
+    # SEGURIDAD
+    # =================================================
+
+    if request.user.role == "patient":
+
+        if document.patient_id != request.user.id:
+
+            create_audit(
+
+                user=request.user,
+
+                action="denied",
+
+                module="documents",
+
+                object_id=document.id,
+
+                description=(
+                    f"El usuario {request.user.username} "
+                    f"intentó eliminar el documento "
+                    f"'{document.title}' "
+                    f"con ID {document.id} "
+                    f"sin permisos."
+                ),
+
+                request=request
+            )
+
+            return Response(
+
+                {
+                    "detail":
+                    "No tiene permisos para eliminar este documento."
+                },
+
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+    # =================================================
+    # GUARDAR INFORMACIÓN
     # =================================================
 
     document_id_value = document.id
+
     document_title = document.title
 
     # =================================================
@@ -354,13 +542,13 @@ def delete_document_api(request, document_id):
             )
 
     # =================================================
-    # ELIMINAR REGISTRO DE BASE DE DATOS
+    # ELIMINAR REGISTRO
     # =================================================
 
     document.delete()
 
     # =================================================
-    # AUDITORÍA - ELIMINAR DOCUMENTO
+    # AUDITORÍA
     # =================================================
 
     create_audit(
@@ -382,10 +570,6 @@ def delete_document_api(request, document_id):
 
         request=request
     )
-
-    # =================================================
-    # RESPUESTA
-    # =================================================
 
     return Response(
 

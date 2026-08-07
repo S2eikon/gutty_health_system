@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     'billing',
     'dashboard',
     'pqr',
+    'notifications',
 
     # =========================
     # 📋 AUDITORÍA DEL SISTEMA

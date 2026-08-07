@@ -60,6 +60,7 @@ urlpatterns = [
         home
     ),
 
+
     # =================================================
     # ADMIN DJANGO
     # =================================================
@@ -68,6 +69,7 @@ urlpatterns = [
         'admin/',
         admin.site.urls
     ),
+
 
     # =================================================
     # USUARIOS
@@ -78,6 +80,7 @@ urlpatterns = [
         include('users.urls')
     ),
 
+
     # =================================================
     # CITAS
     # =================================================
@@ -86,6 +89,7 @@ urlpatterns = [
         'appointments/',
         include('appointments.urls')
     ),
+
 
     # =================================================
     # DASHBOARD
@@ -96,6 +100,7 @@ urlpatterns = [
         include('dashboard.urls')
     ),
 
+
     # =================================================
     # HISTORIAS CLÍNICAS
     # =================================================
@@ -104,6 +109,7 @@ urlpatterns = [
         'medical-records/',
         include('medical_records.urls')
     ),
+
 
     # =================================================
     # DOCUMENTOS MÉDICOS
@@ -114,6 +120,7 @@ urlpatterns = [
         include('documents.urls')
     ),
 
+
     # =================================================
     # FACTURACIÓN
     # =================================================
@@ -122,6 +129,7 @@ urlpatterns = [
         'billing/',
         include('billing.urls')
     ),
+
 
     # =================================================
     # PQR
@@ -132,6 +140,7 @@ urlpatterns = [
         include('pqr.urls')
     ),
 
+
     # =================================================
     # AUDITORÍA
     # =================================================
@@ -140,6 +149,26 @@ urlpatterns = [
         'audit/',
         include('audit.urls')
     ),
+
+
+    # =================================================
+    # NOTIFICACIONES
+    # =================================================
+    #
+    # GET    /notifications/api/
+    # GET    /notifications/api/<id>/
+    # GET    /notifications/api/unread-count/
+    # PATCH  /notifications/api/<id>/read/
+    # PATCH  /notifications/api/read-all/
+    # DELETE /notifications/api/<id>/delete/
+    #
+    # =================================================
+
+    path(
+        'notifications/',
+        include('notifications.urls')
+    ),
+
 
     # =================================================
     # JWT LOGIN
@@ -151,6 +180,7 @@ urlpatterns = [
         name='token_obtain_pair'
     ),
 
+
     # =================================================
     # JWT REFRESH
     # =================================================
@@ -160,6 +190,7 @@ urlpatterns = [
         TokenRefreshView.as_view(),
         name='token_refresh'
     ),
+
 ]
 
 
@@ -174,3 +205,7 @@ if settings.DEBUG:
         settings.MEDIA_URL,
         document_root=settings.MEDIA_ROOT
     )
+
+
+
+

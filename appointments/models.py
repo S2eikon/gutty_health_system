@@ -6,27 +6,76 @@ from users.models import User
 
 class Appointment(models.Model):
 
+    # ======================================================
+    # TIPOS DE CITA
+    # ======================================================
+
     TYPE_CHOICES = [
-        ('first', 'Primera cita dermatología'),
-        ('control', 'Control dermatológico'),
-        ('followup', 'Seguimiento tratamiento'),
-        ('delivery', 'Entrega medicamentos'),
-        ('spa', 'Spa Natural Gutty'),
-        ('cosmetic', 'Limpieza facial'),
+        (
+            'first',
+            'Primera cita dermatología'
+        ),
+        (
+            'control',
+            'Control dermatológico'
+        ),
+        (
+            'followup',
+            'Seguimiento tratamiento'
+        ),
+        (
+            'delivery',
+            'Entrega medicamentos'
+        ),
+        (
+            'spa',
+            'Spa Natural Gutty'
+        ),
+        (
+            'cosmetic',
+            'Limpieza facial'
+        ),
     ]
 
+
+    # ======================================================
+    # ESTADOS DE LA CITA
+    # ======================================================
+
     STATUS_CHOICES = [
-        ('pending', 'Pendiente'),
-        ('confirmed', 'Confirmada'),
-        ('cancelled', 'Cancelada'),
-        ('rescheduled', 'Reprogramada'),
+        (
+            'pending',
+            'Pendiente'
+        ),
+        (
+            'confirmed',
+            'Confirmada'
+        ),
+        (
+            'cancelled',
+            'Cancelada'
+        ),
+        (
+            'rescheduled',
+            'Reprogramada'
+        ),
     ]
+
+
+    # ======================================================
+    # PACIENTE
+    # ======================================================
 
     patient = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
         related_name='appointments_as_patient'
     )
+
+
+    # ======================================================
+    # DOCTOR
+    # ======================================================
 
     doctor = models.ForeignKey(
         User,
@@ -36,14 +85,34 @@ class Appointment(models.Model):
         related_name='appointments_as_doctor'
     )
 
+
+    # ======================================================
+    # TIPO DE CITA
+    # ======================================================
+
     appointment_type = models.CharField(
         max_length=30,
         choices=TYPE_CHOICES
     )
 
+
+    # ======================================================
+    # FECHA
+    # ======================================================
+
     date = models.DateField()
 
+
+    # ======================================================
+    # HORA
+    # ======================================================
+
     time = models.TimeField()
+
+
+    # ======================================================
+    # ESTADO
+    # ======================================================
 
     status = models.CharField(
         max_length=20,
@@ -51,12 +120,24 @@ class Appointment(models.Model):
         default='pending'
     )
 
+
+    # ======================================================
+    # FECHA DE CREACIÓN
+    # ======================================================
+
     created_at = models.DateTimeField(
         auto_now_add=True
     )
 
+
     # ======================================================
     # RECORDATORIOS
+    #
+    # IMPORTANTE:
+    #
+    # Estos campos corresponden a recordatorios enviados
+    # por correo y son independientes de las notificaciones
+    # de eventos de la cita.
     # ======================================================
 
     reminder_sent = models.BooleanField(
@@ -68,39 +149,71 @@ class Appointment(models.Model):
         blank=True
     )
 
+
     # ======================================================
     # VALIDACIONES
     # ======================================================
 
     def clean(self):
 
-        if self.time.hour < 13 or self.time.hour >= 19:
+        # ==================================================
+        # HORARIO PERMITIDO
+        # ==================================================
+
+        if (
+            self.time.hour < 13
+            or self.time.hour >= 19
+        ):
+
             raise ValidationError(
                 "Las citas solo se permiten de 1PM a 7PM."
             )
 
+
+        # ==================================================
+        # EVITAR CITAS DUPLICADAS
+        # ==================================================
+
         exists = Appointment.objects.filter(
+
             patient=self.patient,
+
             date=self.date,
+
             time=self.time
+
         ).exclude(
+
             id=self.id
+
         ).exists()
 
+
         if exists:
+
             raise ValidationError(
-                "Ya existe una cita para este paciente en esta fecha y hora."
+                "Ya existe una cita para este paciente "
+                "en esta fecha y hora."
             )
+
 
     # ======================================================
     # GUARDAR
     # ======================================================
 
-    def save(self, *args, **kwargs):
+    def save(
+        self,
+        *args,
+        **kwargs
+    ):
 
         self.clean()
 
-        super().save(*args, **kwargs)
+        super().save(
+            *args,
+            **kwargs
+        )
+
 
     # ======================================================
     # REPRESENTACIÓN
@@ -109,11 +222,20 @@ class Appointment(models.Model):
     def __str__(self):
 
         patient_name = (
+
             self.patient.get_full_name()
-            or self.patient.username
+
+            or
+
+            self.patient.username
+
         )
 
         return (
+
             f"{patient_name} - "
-            f"{self.date} {self.time}"
+            f"{self.date} "
+            f"{self.time}"
+
         )
+

@@ -9,8 +9,23 @@ from . import views
 urlpatterns = [
 
     # ==================================================
-    # LISTAR CITAS
+    # LISTAR CITAS - PAGINACIÓN
     # GET /appointments/api/
+    #
+    # PAGINACIÓN:
+    #
+    # /appointments/api/?page=1
+    # /appointments/api/?page=2
+    # /appointments/api/?page=3
+    #
+    # Cada página devuelve máximo 20 citas.
+    #
+    # También se admite:
+    #
+    # /appointments/api/?page=2&page_size=20
+    #
+    # El límite máximo de 20 registros está controlado
+    # directamente en appointments/views.py.
     # ==================================================
 
     path(
@@ -93,7 +108,7 @@ urlpatterns = [
 
 
     # ==================================================
-    # ENVIAR RECORDATORIO
+    # ENVIAR RECORDATORIO INDIVIDUAL
     # POST /appointments/api/<id>/send-reminder/
     # ==================================================
 
@@ -119,6 +134,9 @@ urlpatterns = [
     # ==================================================
     # DASHBOARD
     # GET /appointments/api/dashboard/
+    #
+    # Este endpoint devuelve únicamente totales
+    # estadísticos y no la lista completa de citas.
     # ==================================================
 
     path(
@@ -131,6 +149,20 @@ urlpatterns = [
     # ==================================================
     # CALENDARIO
     # GET /appointments/api/calendar/
+    #
+    # NOTA DE AUDITORÍA:
+    #
+    # Esta ruta es independiente del listado paginado.
+    # El calendario actualmente construye todos sus eventos
+    # para FullCalendar.
+    #
+    # Por lo tanto:
+    #
+    # /appointments/api/       -> PAGINADO
+    # /appointments/api/calendar/ -> CALENDARIO
+    #
+    # La posible optimización del calendario se auditará
+    # por separado.
     # ==================================================
 
     path(
