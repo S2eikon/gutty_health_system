@@ -1,3 +1,8 @@
+# ======================================================
+# USERS / VIEWS.PY
+# GUTTY HEALTH SYSTEM
+# ======================================================
+
 from django.shortcuts import render, redirect
 from django.contrib.auth import login, logout, authenticate
 from django import forms
@@ -5,7 +10,7 @@ from django import forms
 from .models import User
 
 from rest_framework.views import APIView
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.decorators import (
@@ -15,7 +20,8 @@ from rest_framework.decorators import (
 
 from .serializers import (
     UserProfileSerializer,
-    UserSerializer
+    UserSerializer,
+    RegisterSerializer,
 )
 
 from audit.services import create_audit
@@ -38,7 +44,6 @@ class RegisterForm(forms.ModelForm):
     )
 
     class Meta:
-
         model = User
 
         fields = [
@@ -62,7 +67,6 @@ class RegisterForm(forms.ModelForm):
             and password2
             and password1 != password2
         ):
-
             raise forms.ValidationError(
                 "Las contraseñas no coinciden."
             )
@@ -80,7 +84,6 @@ class RegisterForm(forms.ModelForm):
         )
 
         if commit:
-
             user.save()
 
         return user
@@ -118,17 +121,15 @@ def register_view(request):
                 "patient",
                 "doctor"
             ]:
-
                 user.role = role
 
             else:
-
                 user.role = "patient"
 
             user.save()
 
             # ==================================================
-            # AUDITORÍA - REGISTRO
+            # AUDITORÍA - REGISTRO HTML
             # ==================================================
 
             create_audit(
@@ -439,21 +440,18 @@ class ProfileAPIView(APIView):
 # ======================================================
 
 @api_view(["GET"])
-@permission_classes([
-    IsAuthenticated
-])
+@permission_classes([IsAuthenticated])
 def patient_list_api(request):
 
     # ==================================================
     # VALIDACIÓN DE ROL
     # ==================================================
-    #
+
     # Solamente administradores y doctores pueden
     # consultar la lista general de pacientes.
     #
     # Los pacientes autenticados no pueden consultar
     # información de otros pacientes.
-    # ==================================================
 
     if request.user.role not in [
         "admin",
@@ -550,3 +548,109 @@ def patient_list_api(request):
 
     )
 
+
+# ======================================================
+# REGISTRO DE USUARIO - API ANGULAR
+# ======================================================
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def register_api(request):
+
+    # ==================================================
+    # SERIALIZAR DATOS RECIBIDOS
+    # ==================================================
+
+    serializer = RegisterSerializer(
+        data=request.data
+    )
+
+    # ==================================================
+    # VALIDAR DATOS
+    # ==================================================
+
+    if not serializer.is_valid():
+
+        return Response(
+
+            serializer.errors,
+
+            status=status.HTTP_400_BAD_REQUEST
+
+        )
+
+    # ==================================================
+    # CREAR USUARIO
+    # ==================================================
+
+    user = serializer.save()
+
+    # ==================================================
+    # AUDITORÍA - REGISTRO API
+    # ==================================================
+
+    # El registro es público (AllowAny), por lo que
+    # todavía no existe un usuario autenticado que
+    # pueda actuar como responsable de la operación.
+    #
+    # Se registra el usuario recién creado como
+    # referencia de la acción de creación.
+
+    create_audit(
+
+        user=user,
+
+        action="create",
+
+        module="users",
+
+        object_id=user.id,
+
+        description=(
+
+            f"El usuario {user.username} "
+
+            f"fue registrado mediante la API "
+
+            f"con rol {user.role}."
+
+        ),
+
+        request=request,
+
+    )
+
+    # ==================================================
+    # RESPUESTA
+    # ==================================================
+
+    return Response(
+
+        {
+            "message": (
+                "Usuario registrado "
+                "correctamente."
+            ),
+
+            "user": {
+
+                "id": user.id,
+
+                "username": user.username,
+
+                "first_name": user.first_name,
+
+                "last_name": user.last_name,
+
+                "email": user.email,
+
+                "phone": user.phone,
+
+                "role": user.role,
+
+            }
+        },
+
+        status=status.HTTP_201_CREATED
+
+    )

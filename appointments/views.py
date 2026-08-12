@@ -39,15 +39,17 @@ def appointments_api(request):
         appointments = Appointment.objects.filter(
             patient=request.user
         ).order_by(
-            "date",
-            "time"
+            "-date",
+            "-time",
+            "-id"
         )
 
     else:
 
         appointments = Appointment.objects.all().order_by(
-            "date",
-            "time"
+            "-date",
+            "-time",
+            "-id"
         )
 
     # ==================================================
@@ -151,7 +153,6 @@ def create_appointment_api(request):
                 ),
 
                 appointment_id=appointment.id
-
             )
 
         else:
@@ -183,7 +184,6 @@ def create_appointment_api(request):
                     ),
 
                     appointment_id=appointment.id
-
                 )
 
         # ==================================================
@@ -305,8 +305,7 @@ def confirm_appointment_api(
 
         return Response(
             {
-                "error":
-                "La cita ya está confirmada."
+                "error": "La cita ya está confirmada."
             },
             status=status.HTTP_400_BAD_REQUEST
         )
@@ -315,8 +314,10 @@ def confirm_appointment_api(
 
         return Response(
             {
-                "error":
-                "No se puede confirmar una cita cancelada."
+                "error": (
+                    "No se puede confirmar "
+                    "una cita cancelada."
+                )
             },
             status=status.HTTP_400_BAD_REQUEST
         )
@@ -354,7 +355,6 @@ def confirm_appointment_api(
         ),
 
         appointment_id=appointment.id
-
     )
 
     # ==================================================
@@ -369,16 +369,15 @@ def confirm_appointment_api(
         description=(
             f"El usuario {request.user.username} "
             f"confirmó la cita con ID {appointment.id}. "
-            f"Se generó la notificación de cita confirmada "
-            f"para el paciente."
+            f"Se generó la notificación de cita "
+            f"confirmada para el paciente."
         ),
         request=request
     )
 
     return Response(
         {
-            "message":
-            "Cita confirmada correctamente."
+            "message": "Cita confirmada correctamente."
         },
         status=status.HTTP_200_OK
     )
@@ -404,8 +403,7 @@ def cancel_appointment_api(
 
         return Response(
             {
-                "error":
-                "La cita ya fue cancelada."
+                "error": "La cita ya fue cancelada."
             },
             status=status.HTTP_400_BAD_REQUEST
         )
@@ -443,7 +441,6 @@ def cancel_appointment_api(
         ),
 
         appointment_id=appointment.id
-
     )
 
     # ==================================================
@@ -458,16 +455,15 @@ def cancel_appointment_api(
         description=(
             f"El usuario {request.user.username} "
             f"canceló la cita con ID {appointment.id}. "
-            f"Se generó la notificación de cita cancelada "
-            f"para el paciente."
+            f"Se generó la notificación de cita "
+            f"cancelada para el paciente."
         ),
         request=request
     )
 
     return Response(
         {
-            "message":
-            "Cita cancelada correctamente."
+            "message": "Cita cancelada correctamente."
         },
         status=status.HTTP_200_OK
     )
@@ -493,8 +489,10 @@ def reschedule_appointment_api(
 
         return Response(
             {
-                "error":
-                "No se puede reprogramar una cita cancelada."
+                "error": (
+                    "No se puede reprogramar "
+                    "una cita cancelada."
+                )
             },
             status=status.HTTP_400_BAD_REQUEST
         )
@@ -548,7 +546,6 @@ def reschedule_appointment_api(
         ),
 
         appointment_id=appointment.id
-
     )
 
     # ==================================================
@@ -563,19 +560,16 @@ def reschedule_appointment_api(
         description=(
             f"El usuario {request.user.username} "
             f"reprogramó la cita con ID {appointment.id}. "
-            f"Se generó la notificación de cita reprogramada "
-            f"para el paciente."
+            f"Se generó la notificación de cita "
+            f"reprogramada para el paciente."
         ),
         request=request
     )
 
     return Response(
         {
-            "message":
-            "Cita reprogramada correctamente.",
-
-            "appointment":
-            AppointmentSerializer(
+            "message": "Cita reprogramada correctamente.",
+            "appointment": AppointmentSerializer(
                 appointment
             ).data
         },
@@ -622,8 +616,7 @@ def delete_appointment_api(
 
     return Response(
         {
-            "message":
-            "Cita eliminada correctamente."
+            "message": "Cita eliminada correctamente."
         },
         status=status.HTTP_200_OK
     )
@@ -649,26 +642,21 @@ def dashboard_totals_api(request):
 
     data = {
 
-        "total":
-        appointments.count(),
+        "total": appointments.count(),
 
-        "pending":
-        appointments.filter(
+        "pending": appointments.filter(
             status="pending"
         ).count(),
 
-        "confirmed":
-        appointments.filter(
+        "confirmed": appointments.filter(
             status="confirmed"
         ).count(),
 
-        "cancelled":
-        appointments.filter(
+        "cancelled": appointments.filter(
             status="cancelled"
         ).count(),
 
-        "rescheduled":
-        appointments.filter(
+        "rescheduled": appointments.filter(
             status="rescheduled"
         ).count(),
 
@@ -729,17 +717,13 @@ def calendar_appointments_api(request):
 
     STATUS_COLORS = {
 
-        "pending":
-        "#ffc107",
+        "pending": "#ffc107",
 
-        "confirmed":
-        "#198754",
+        "confirmed": "#198754",
 
-        "cancelled":
-        "#dc3545",
+        "cancelled": "#dc3545",
 
-        "rescheduled":
-        "#0dcaf0",
+        "rescheduled": "#0dcaf0",
 
     }
 
@@ -763,61 +747,56 @@ def calendar_appointments_api(request):
 
         events.append({
 
-            "id":
-            appointment.id,
+            "id": appointment.id,
 
-            "title":
-            f"{patient_name} - "
-            f"{appointment.get_appointment_type_display()}",
+            "title": (
+                f"{patient_name} - "
+                f"{appointment.get_appointment_type_display()}"
+            ),
 
-            "start":
-            f"{appointment.date}T{appointment.time}",
+            "start": (
+                f"{appointment.date}T"
+                f"{appointment.time}"
+            ),
 
-            "color":
-            STATUS_COLORS.get(
+            "color": STATUS_COLORS.get(
                 appointment.status,
                 "#6c757d"
             ),
 
             "extendedProps": {
 
-                "patient":
-                patient_name,
+                "patient": patient_name,
 
-                "doctor":
-                doctor_name,
+                "doctor": doctor_name,
 
-                "status":
-                appointment.status,
+                "status": appointment.status,
 
-                "status_display":
-                appointment.get_status_display(),
+                "status_display": (
+                    appointment.get_status_display()
+                ),
 
-                "appointment_type":
-                appointment.get_appointment_type_display(),
+                "appointment_type": (
+                    appointment.get_appointment_type_display()
+                ),
 
-                "date":
-                str(appointment.date),
+                "date": str(appointment.date),
 
-                "time":
-                str(appointment.time)[:5],
+                "time": str(appointment.time)[:5],
 
-                "notes":
-                getattr(
+                "notes": getattr(
                     appointment,
                     "notes",
                     ""
                 ),
 
-                "phone":
-                getattr(
+                "phone": getattr(
                     appointment.patient,
                     "phone",
                     ""
                 ),
 
-                "email":
-                appointment.patient.email,
+                "email": appointment.patient.email,
 
             }
 
@@ -879,14 +858,19 @@ def send_pending_reminders_api(request):
             "Recordatorio de cita médica",
 
             f"""
-Hola {appointment.patient.get_full_name() or appointment.patient.username},
+Hola {
+                appointment.patient.get_full_name()
+                or appointment.patient.username
+            },
 
 Este es un recordatorio de su cita médica.
 
 Fecha: {appointment.date}
 Hora: {appointment.time.strftime('%H:%M')}
 Doctor: {doctor_name}
-Tipo de cita: {appointment.get_appointment_type_display()}
+Tipo de cita: {
+                appointment.get_appointment_type_display()
+            }
 
 Instituto Médico Asdrúbal Gutty
 """,
@@ -933,8 +917,10 @@ Instituto Médico Asdrúbal Gutty
 
     return Response(
         {
-            "message":
-            f"Se enviaron {enviados} recordatorios."
+            "message": (
+                f"Se enviaron {enviados} "
+                f"recordatorios."
+            )
         },
         status=status.HTTP_200_OK
     )
@@ -960,8 +946,10 @@ def send_reminder_api(
 
         return Response(
             {
-                "error":
-                "El paciente no tiene un correo registrado."
+                "error": (
+                    "El paciente no tiene "
+                    "un correo registrado."
+                )
             },
             status=status.HTTP_400_BAD_REQUEST
         )
@@ -978,14 +966,19 @@ def send_reminder_api(
         )
 
     message = f"""
-Hola {appointment.patient.get_full_name() or appointment.patient.username},
+Hola {
+        appointment.patient.get_full_name()
+        or appointment.patient.username
+    },
 
 Este es un recordatorio de su cita médica.
 
 Fecha: {appointment.date}
 Hora: {appointment.time.strftime('%H:%M')}
 Doctor: {doctor_name}
-Tipo de cita: {appointment.get_appointment_type_display()}
+Tipo de cita: {
+        appointment.get_appointment_type_display()
+    }
 
 Por favor llegue con 15 minutos de anticipación.
 
@@ -1036,9 +1029,9 @@ Instituto Médico Asdrúbal Gutty
 
     return Response(
         {
-            "message":
-            "Recordatorio enviado correctamente."
+            "message": (
+                "Recordatorio enviado correctamente."
+            )
         },
         status=status.HTTP_200_OK
     )
-

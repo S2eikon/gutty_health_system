@@ -4,6 +4,10 @@ from django.db import models
 
 class User(AbstractUser):
 
+    # =====================================================
+    # ROLES
+    # =====================================================
+
     ROLE_CHOICES = [
         ('admin', 'Administrador'),
         ('doctor', 'Doctor'),
@@ -16,6 +20,20 @@ class User(AbstractUser):
         choices=ROLE_CHOICES,
         default='patient'
     )
+
+    # =====================================================
+    # CELULAR
+    # =====================================================
+
+    phone = models.CharField(
+        max_length=20,
+        blank=True,
+        null=True
+    )
+
+    # =====================================================
+    # REPRESENTACIÓN
+    # =====================================================
 
     def __str__(self):
         return f"{self.username} ({self.role})"

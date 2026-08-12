@@ -11,13 +11,11 @@ class AppointmentSerializer(serializers.ModelSerializer):
 
     patient_name = serializers.SerializerMethodField()
 
-
     # ======================================================
     # INFORMACIÓN DEL MÉDICO
     # ======================================================
 
     doctor_name = serializers.SerializerMethodField()
-
 
     # ======================================================
     # ESTADO DE LA CITA
@@ -28,7 +26,6 @@ class AppointmentSerializer(serializers.ModelSerializer):
         read_only=True
     )
 
-
     # ======================================================
     # TIPO DE CITA
     # ======================================================
@@ -37,7 +34,6 @@ class AppointmentSerializer(serializers.ModelSerializer):
         source="get_appointment_type_display",
         read_only=True
     )
-
 
     # ======================================================
     # CONFIGURACIÓN DEL SERIALIZER
@@ -88,7 +84,6 @@ class AppointmentSerializer(serializers.ModelSerializer):
 
         ]
 
-
         # ==================================================
         # CAMPOS DE SOLO LECTURA
         # ==================================================
@@ -107,7 +102,6 @@ class AppointmentSerializer(serializers.ModelSerializer):
 
         ]
 
-
     # ======================================================
     # NOMBRE DEL PACIENTE
     # ======================================================
@@ -120,17 +114,11 @@ class AppointmentSerializer(serializers.ModelSerializer):
         if obj.patient:
 
             return (
-
                 obj.patient.get_full_name()
-
-                or
-
-                obj.patient.username
-
+                or obj.patient.username
             )
 
         return ""
-
 
     # ======================================================
     # NOMBRE DEL MÉDICO
@@ -144,17 +132,11 @@ class AppointmentSerializer(serializers.ModelSerializer):
         if obj.doctor:
 
             return (
-
                 obj.doctor.get_full_name()
-
-                or
-
-                obj.doctor.username
-
+                or obj.doctor.username
             )
 
         return ""
-
 
     # ======================================================
     # VALIDACIONES
@@ -170,15 +152,9 @@ class AppointmentSerializer(serializers.ModelSerializer):
         # ==================================================
 
         if (
-
             not self.instance
-
             and
-
-            not data.get(
-                "appointment_type"
-            )
-
+            not data.get("appointment_type")
         ):
 
             raise serializers.ValidationError({
@@ -188,21 +164,14 @@ class AppointmentSerializer(serializers.ModelSerializer):
 
             })
 
-
         # ==================================================
         # VALIDAR FECHA
         # ==================================================
 
         if (
-
             not self.instance
-
             and
-
-            not data.get(
-                "date"
-            )
-
+            not data.get("date")
         ):
 
             raise serializers.ValidationError({
@@ -212,21 +181,14 @@ class AppointmentSerializer(serializers.ModelSerializer):
 
             })
 
-
         # ==================================================
         # VALIDAR HORA
         # ==================================================
 
         if (
-
             not self.instance
-
             and
-
-            not data.get(
-                "time"
-            )
-
+            not data.get("time")
         ):
 
             raise serializers.ValidationError({
@@ -236,6 +198,4 @@ class AppointmentSerializer(serializers.ModelSerializer):
 
             })
 
-
         return data
-

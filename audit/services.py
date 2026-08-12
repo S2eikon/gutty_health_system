@@ -1,27 +1,18 @@
 from .models import AuditLog
 
 
-
 # =====================================================
 # SERVICIO GENERAL DE AUDITORÍA
 # =====================================================
 
 def create_audit(
-
     user,
-
     action,
-
     module,
-
     description,
-
     object_id=None,
-
     request=None
-
 ):
-
 
     # ==============================================
     # OBTENER IP DEL USUARIO
@@ -29,13 +20,11 @@ def create_audit(
 
     ip_address = None
 
-
     if request:
 
         ip_address = request.META.get(
             "REMOTE_ADDR"
         )
-
 
     # ==============================================
     # CREAR REGISTRO DE AUDITORÍA
@@ -56,6 +45,5 @@ def create_audit(
         ip_address=ip_address
 
     )
-
 
     return audit_log
