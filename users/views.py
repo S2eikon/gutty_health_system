@@ -44,6 +44,7 @@ class RegisterForm(forms.ModelForm):
     )
 
     class Meta:
+
         model = User
 
         fields = [
@@ -67,6 +68,7 @@ class RegisterForm(forms.ModelForm):
             and password2
             and password1 != password2
         ):
+
             raise forms.ValidationError(
                 "Las contraseñas no coinciden."
             )
@@ -121,9 +123,11 @@ def register_view(request):
                 "patient",
                 "doctor"
             ]:
+
                 user.role = role
 
             else:
+
                 user.role = "patient"
 
             user.save()
@@ -145,11 +149,12 @@ def register_view(request):
                 description=(
 
                     f"El usuario {user.username} "
-
-                    f"fue registrado en el sistema "
-
-                    f"con rol {user.role}."
-
+                    f"fue registrado mediante el "
+                    f"formulario web. "
+                    f"Rol asignado: {user.role}. "
+                    f"Nombre: "
+                    f"{user.get_full_name() or 'No registrado'}."
+                    
                 ),
 
                 request=request,
@@ -236,8 +241,8 @@ def login_view(request):
                 description=(
 
                     f"El usuario {user.username} "
-
-                    f"inició sesión en el sistema."
+                    f"inició sesión correctamente. "
+                    f"Rol: {user.role}."
 
                 ),
 
@@ -246,6 +251,32 @@ def login_view(request):
             )
 
             return redirect("/")
+
+        # ==================================================
+        # AUDITORÍA - LOGIN FALLIDO
+        # ==================================================
+
+        create_audit(
+
+            user=None,
+
+            action="denied",
+
+            module="users",
+
+            object_id=None,
+
+            description=(
+
+                f"Se detectó un intento de inicio "
+                f"de sesión fallido para el usuario "
+                f"'{username}'."
+
+            ),
+
+            request=request,
+
+        )
 
         # ==================================================
         # LOGIN FALLIDO
@@ -296,8 +327,8 @@ def logout_view(request):
             description=(
 
                 f"El usuario {user.username} "
-
-                f"cerró sesión."
+                f"cerró sesión. "
+                f"Rol: {user.role}."
 
             ),
 
@@ -351,8 +382,8 @@ class ProfileAPIView(APIView):
             description=(
 
                 f"El usuario {request.user.username} "
-
-                f"consultó su perfil."
+                f"consultó su perfil. "
+                f"Rol: {request.user.role}."
 
             ),
 
@@ -374,6 +405,25 @@ class ProfileAPIView(APIView):
 
     def put(self, request):
 
+        # ==================================================
+        # CAMPOS MODIFICADOS
+        # ==================================================
+
+        fields_updated = []
+
+        for field in request.data.keys():
+
+            if field != "password":
+
+                fields_updated.append(
+                    field
+                )
+
+        password_changed = (
+            "password" in request.data
+            and bool(request.data.get("password"))
+        )
+
         serializer = UserProfileSerializer(
 
             request.user,
@@ -387,6 +437,22 @@ class ProfileAPIView(APIView):
         if serializer.is_valid():
 
             user = serializer.save()
+
+            # ==================================================
+            # INFORMACIÓN DE AUDITORÍA
+            # ==================================================
+
+            updated_fields_text = (
+                ", ".join(fields_updated)
+                if fields_updated
+                else "ningún campo de información personal"
+            )
+
+            password_text = (
+                "La contraseña también fue actualizada."
+                if password_changed
+                else "La contraseña no fue modificada."
+            )
 
             # ==================================================
             # AUDITORÍA - ACTUALIZAR PERFIL
@@ -405,8 +471,10 @@ class ProfileAPIView(APIView):
                 description=(
 
                     f"El usuario {request.user.username} "
-
-                    f"actualizó su perfil."
+                    f"actualizó su perfil. "
+                    f"Campos modificados: "
+                    f"{updated_fields_text}. "
+                    f"{password_text}"
 
                 ),
 
@@ -475,11 +543,8 @@ def patient_list_api(request):
             description=(
 
                 f"El usuario {request.user.username} "
-
                 f"con rol {request.user.role} "
-
                 f"intentó consultar la lista de pacientes "
-
                 f"sin permisos."
 
             ),
@@ -531,8 +596,9 @@ def patient_list_api(request):
         description=(
 
             f"El usuario {request.user.username} "
-
-            f"consultó la lista de pacientes."
+            f"consultó la lista de pacientes. "
+            f"Cantidad de pacientes consultados: "
+            f"{patients.count()}."
 
         ),
 
@@ -570,6 +636,32 @@ def register_api(request):
     # ==================================================
 
     if not serializer.is_valid():
+
+        # ==================================================
+        # AUDITORÍA - REGISTRO RECHAZADO
+        # ==================================================
+
+        create_audit(
+
+            user=None,
+
+            action="denied",
+
+            module="users",
+
+            object_id=None,
+
+            description=(
+
+                "Se rechazó un intento de "
+                "registro de usuario mediante la API "
+                "debido a datos inválidos."
+
+            ),
+
+            request=request,
+
+        )
 
         return Response(
 
@@ -609,10 +701,10 @@ def register_api(request):
         description=(
 
             f"El usuario {user.username} "
-
             f"fue registrado mediante la API "
-
-            f"con rol {user.role}."
+            f"con rol {user.role}. "
+            f"Nombre: "
+            f"{user.get_full_name() or 'No registrado'}."
 
         ),
 

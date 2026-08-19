@@ -1,4 +1,10 @@
+# ======================================================
+# APPOINTMENTS / URLS.PY
+# GUTTY HEALTH SYSTEM
+# ======================================================
+
 from django.urls import path
+
 from . import views
 
 
@@ -9,7 +15,7 @@ from . import views
 urlpatterns = [
 
     # ==================================================
-    # LISTAR CITAS - PAGINACIÓN
+    # LISTAR CITAS
     # GET /appointments/api/
     #
     # PAGINACIÓN:
@@ -24,14 +30,14 @@ urlpatterns = [
     #
     # /appointments/api/?page=2&page_size=20
     #
-    # El límite máximo de 20 registros está controlado
-    # directamente en appointments/views.py.
+    # La paginación y el límite máximo de registros
+    # están controlados en appointments/views.py.
     # ==================================================
 
     path(
         "api/",
         views.appointments_api,
-        name="appointments_api"
+        name="appointments_api",
     ),
 
 
@@ -43,7 +49,7 @@ urlpatterns = [
     path(
         "api/create/",
         views.create_appointment_api,
-        name="create_appointment"
+        name="create_appointment",
     ),
 
 
@@ -55,7 +61,7 @@ urlpatterns = [
     path(
         "api/<int:appointment_id>/update/",
         views.update_appointment_api,
-        name="update_appointment"
+        name="update_appointment",
     ),
 
 
@@ -67,7 +73,7 @@ urlpatterns = [
     path(
         "api/<int:appointment_id>/confirm/",
         views.confirm_appointment_api,
-        name="confirm_appointment"
+        name="confirm_appointment",
     ),
 
 
@@ -79,7 +85,7 @@ urlpatterns = [
     path(
         "api/<int:appointment_id>/cancel/",
         views.cancel_appointment_api,
-        name="cancel_appointment"
+        name="cancel_appointment",
     ),
 
 
@@ -91,7 +97,7 @@ urlpatterns = [
     path(
         "api/<int:appointment_id>/reschedule/",
         views.reschedule_appointment_api,
-        name="reschedule_appointment"
+        name="reschedule_appointment",
     ),
 
 
@@ -103,7 +109,7 @@ urlpatterns = [
     path(
         "api/<int:appointment_id>/delete/",
         views.delete_appointment_api,
-        name="delete_appointment"
+        name="delete_appointment",
     ),
 
 
@@ -115,19 +121,19 @@ urlpatterns = [
     path(
         "api/<int:appointment_id>/send-reminder/",
         views.send_reminder_api,
-        name="send_reminder"
+        name="send_reminder",
     ),
 
 
     # ==================================================
-    # ENVIAR TODOS LOS RECORDATORIOS
+    # ENVIAR TODOS LOS RECORDATORIOS PENDIENTES
     # POST /appointments/api/send-reminders/
     # ==================================================
 
     path(
         "api/send-reminders/",
         views.send_pending_reminders_api,
-        name="send_pending_reminders"
+        name="send_pending_reminders",
     ),
 
 
@@ -135,14 +141,14 @@ urlpatterns = [
     # DASHBOARD
     # GET /appointments/api/dashboard/
     #
-    # Este endpoint devuelve únicamente totales
-    # estadísticos y no la lista completa de citas.
+    # Devuelve únicamente los totales estadísticos
+    # de las citas.
     # ==================================================
 
     path(
         "api/dashboard/",
         views.dashboard_totals_api,
-        name="dashboard_totals"
+        name="dashboard_totals",
     ),
 
 
@@ -150,26 +156,22 @@ urlpatterns = [
     # CALENDARIO
     # GET /appointments/api/calendar/
     #
-    # NOTA DE AUDITORÍA:
+    # Endpoint independiente del listado paginado.
     #
-    # Esta ruta es independiente del listado paginado.
-    # El calendario actualmente construye todos sus eventos
-    # para FullCalendar.
+    # /appointments/api/
+    #     -> listado paginado
     #
-    # Por lo tanto:
+    # /appointments/api/calendar/
+    #     -> eventos para FullCalendar
     #
-    # /appointments/api/       -> PAGINADO
-    # /appointments/api/calendar/ -> CALENDARIO
-    #
-    # La posible optimización del calendario se auditará
-    # por separado.
+    # La auditoría de la consulta del calendario se
+    # encuentra implementada en views.py.
     # ==================================================
 
     path(
         "api/calendar/",
         views.calendar_appointments_api,
-        name="calendar_appointments"
+        name="calendar_appointments",
     ),
 
 ]
-

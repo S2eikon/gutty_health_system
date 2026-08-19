@@ -21,7 +21,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
         required=False,
         allow_blank=True,
         style={
-            'input_type': 'password'
+            "input_type": "password"
         }
     )
 
@@ -30,20 +30,20 @@ class UserProfileSerializer(serializers.ModelSerializer):
         model = User
 
         fields = [
-            'id',
-            'username',
-            'first_name',
-            'last_name',
-            'email',
-            'role',
-            'phone',
-            'password',
+            "id",
+            "username",
+            "first_name",
+            "last_name",
+            "email",
+            "role",
+            "phone",
+            "password",
         ]
 
         read_only_fields = [
-            'id',
-            'username',
-            'role',
+            "id",
+            "username",
+            "role",
         ]
 
     # ==================================================
@@ -52,7 +52,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
     def validate_password(self, value):
 
-        if value == '' or value is None:
+        if value == "" or value is None:
             return value
 
         password_validation.validate_password(
@@ -73,7 +73,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
     ):
 
         password = validated_data.pop(
-            'password',
+            "password",
             None
         )
 
@@ -117,11 +117,16 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
 
         fields = [
-            'id',
-            'username',
-            'first_name',
-            'last_name',
-            'full_name'
+            "id",
+            "username",
+            "first_name",
+            "last_name",
+            "full_name",
+        ]
+
+        read_only_fields = [
+            "id",
+            "full_name",
         ]
 
     # ==================================================
@@ -149,7 +154,7 @@ class RegisterSerializer(serializers.ModelSerializer):
     confirmPassword = serializers.CharField(
         write_only=True,
         style={
-            'input_type': 'password'
+            "input_type": "password"
         }
     )
 
@@ -162,18 +167,18 @@ class RegisterSerializer(serializers.ModelSerializer):
         model = User
 
         fields = [
-            'first_name',
-            'last_name',
-            'username',
-            'email',
-            'phone',
-            'password',
-            'confirmPassword',
+            "first_name",
+            "last_name",
+            "username",
+            "email",
+            "phone",
+            "password",
+            "confirmPassword",
         ]
 
         extra_kwargs = {
-            'password': {
-                'write_only': True
+            "password": {
+                "write_only": True
             }
         }
 
@@ -188,7 +193,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         ).exists():
 
             raise serializers.ValidationError(
-                'Este username ya está registrado.'
+                "Este username ya está registrado."
             )
 
         return value
@@ -204,7 +209,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         ).exists():
 
             raise serializers.ValidationError(
-                'Este correo electrónico ya está registrado.'
+                "Este correo electrónico ya está registrado."
             )
 
         return value
@@ -220,11 +225,11 @@ class RegisterSerializer(serializers.ModelSerializer):
         # ==============================================
 
         password = data.get(
-            'password'
+            "password"
         )
 
         confirm_password = data.get(
-            'confirmPassword'
+            "confirmPassword"
         )
 
         # ==============================================
@@ -235,8 +240,8 @@ class RegisterSerializer(serializers.ModelSerializer):
 
             raise serializers.ValidationError({
 
-                'confirmPassword':
-                    'Las contraseñas no coinciden.'
+                "confirmPassword":
+                    "Las contraseñas no coinciden."
 
             })
 
@@ -254,7 +259,7 @@ class RegisterSerializer(serializers.ModelSerializer):
 
             raise serializers.ValidationError({
 
-                'password':
+                "password":
                     list(error.messages)
 
             })
@@ -272,7 +277,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         # ==============================================
 
         validated_data.pop(
-            'confirmPassword'
+            "confirmPassword"
         )
 
         # ==============================================
@@ -280,7 +285,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         # ==============================================
 
         password = validated_data.pop(
-            'password'
+            "password"
         )
 
         # ==============================================
@@ -289,7 +294,7 @@ class RegisterSerializer(serializers.ModelSerializer):
 
         user = User.objects.create_user(
             password=password,
-            role='patient',
+            role="patient",
             **validated_data
         )
 
