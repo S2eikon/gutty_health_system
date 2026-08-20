@@ -36,7 +36,7 @@ class AppointmentSerializer(serializers.ModelSerializer):
     esthetician_name = serializers.SerializerMethodField()
 
     # ==================================================
-    # ESTADO DE LA CITA
+    # ESTADO
     # ==================================================
 
     status_display = serializers.CharField(
@@ -74,68 +74,35 @@ class AppointmentSerializer(serializers.ModelSerializer):
         model = Appointment
 
         fields = [
-
-            # ------------------------------------------
-            # IDENTIFICACIÓN
-            # ------------------------------------------
-
             "id",
-
-            # ------------------------------------------
-            # PACIENTE
-            # ------------------------------------------
 
             "patient",
             "patient_name",
 
-            # ------------------------------------------
-            # MÉDICO
-            # ------------------------------------------
-
             "doctor",
             "doctor_name",
-
-            # ------------------------------------------
-            # ESTETICISTA
-            # ------------------------------------------
 
             "esthetician",
             "esthetician_name",
 
-            # ------------------------------------------
-            # TIPO DE CITA
-            # ------------------------------------------
-
             "appointment_type",
             "appointment_type_display",
 
-            # ------------------------------------------
-            # FECHA Y HORA
-            # ------------------------------------------
-
             "date",
             "time",
-
-            # ------------------------------------------
-            # ESTADO
-            # ------------------------------------------
 
             "status",
             "status_display",
         ]
 
         read_only_fields = [
-
             "id",
 
             "patient_name",
-
             "doctor_name",
-
             "esthetician_name",
 
             "status",
-
             "status_display",
 
             "appointment_type_display",
@@ -154,7 +121,8 @@ class AppointmentSerializer(serializers.ModelSerializer):
 
             return (
                 obj.patient.get_full_name()
-                or obj.patient.username
+                or
+                obj.patient.username
             )
 
         return ""
@@ -172,7 +140,8 @@ class AppointmentSerializer(serializers.ModelSerializer):
 
             return (
                 obj.doctor.get_full_name()
-                or obj.doctor.username
+                or
+                obj.doctor.username
             )
 
         return ""
@@ -190,7 +159,8 @@ class AppointmentSerializer(serializers.ModelSerializer):
 
             return (
                 obj.esthetician.get_full_name()
-                or obj.esthetician.username
+                or
+                obj.esthetician.username
             )
 
         return ""
@@ -215,7 +185,7 @@ class AppointmentSerializer(serializers.ModelSerializer):
         )
 
         # ==================================================
-        # CONTEXTO DEL USUARIO AUTENTICADO
+        # USUARIO AUTENTICADO
         # ==================================================
 
         request = self.context.get("request")
@@ -226,6 +196,7 @@ class AppointmentSerializer(serializers.ModelSerializer):
             request is not None
             and request.user.is_authenticated
         ):
+
             authenticated_user = request.user
 
         if authenticated_user:
@@ -241,16 +212,8 @@ class AppointmentSerializer(serializers.ModelSerializer):
                 f"Rol: {authenticated_user.role}"
             )
 
-        else:
-
-            print(
-                "[AUDITORÍA][SERIALIZER][APPOINTMENTS] "
-                "No se recibió usuario autenticado "
-                "en el contexto del serializer."
-            )
-
         # ==================================================
-        # DETERMINAR OPERACIÓN
+        # OPERACIÓN
         # ==================================================
 
         is_create = self.instance is None
@@ -265,35 +228,11 @@ class AppointmentSerializer(serializers.ModelSerializer):
             and not self.partial
         )
 
-        print(
-            "[AUDITORÍA][SERIALIZER][APPOINTMENTS] "
-            "Operación: "
-            f"{'CREACIÓN' if is_create else 'ACTUALIZACIÓN'}"
-        )
-
-        if is_partial_update:
-
-            print(
-                "[AUDITORÍA][SERIALIZER][APPOINTMENTS] "
-                "Actualización parcial detectada."
-            )
-
-        if is_full_update:
-
-            print(
-                "[AUDITORÍA][SERIALIZER][APPOINTMENTS] "
-                "Actualización completa detectada."
-            )
-
         # ==================================================
         # PACIENTE
         # ==================================================
 
         patient = data.get("patient")
-
-        # --------------------------------------------------
-        # CREACIÓN COMO PACIENTE AUTENTICADO
-        # --------------------------------------------------
 
         if (
             patient is None
@@ -304,20 +243,7 @@ class AppointmentSerializer(serializers.ModelSerializer):
 
             patient = authenticated_user
 
-            print(
-                "[AUDITORÍA][SERIALIZER][APPOINTMENTS] "
-                "Paciente no enviado por frontend."
-            )
-
-            print(
-                "[AUDITORÍA][SERIALIZER][APPOINTMENTS] "
-                "Se utilizará automáticamente el usuario "
-                f"autenticado: {patient.username}"
-            )
-
-        # --------------------------------------------------
-        # ACTUALIZACIÓN SIN CAMBIAR PACIENTE
-        # --------------------------------------------------
+            data["patient"] = patient
 
         elif (
             patient is None
@@ -326,57 +252,31 @@ class AppointmentSerializer(serializers.ModelSerializer):
 
             patient = self.instance.patient
 
-            print(
-                "[AUDITORÍA][SERIALIZER][APPOINTMENTS] "
-                "No se recibió un nuevo paciente."
-            )
-
-            print(
-                "[AUDITORÍA][SERIALIZER][APPOINTMENTS] "
-                "Se conservará el paciente actual: "
-                f"{patient.username if patient else 'Sin asignar'}"
-            )
-
-        # ==================================================
-        # VALIDAR EXISTENCIA DEL PACIENTE
-        # ==================================================
+            data["patient"] = patient
 
         if patient is None:
 
-            print(
-                "[AUDITORÍA][SERIALIZER][APPOINTMENTS] "
-                "ERROR: Paciente no proporcionado."
-            )
-
             raise serializers.ValidationError({
-                "patient": (
-                    "El paciente es obligatorio. "
-                    "Seleccione un paciente antes de crear "
-                    "la cita."
-                ),
+                "patient":
+                "El paciente es obligatorio. "
+                "Seleccione un paciente antes de crear "
+                "la cita.",
             })
 
         # ==================================================
-        # VALIDAR ROL DEL PACIENTE
+        # ROL DEL PACIENTE
         # ==================================================
 
         if patient.role != "patient":
 
-            print(
-                "[AUDITORÍA][SERIALIZER][APPOINTMENTS] "
-                "ERROR: El usuario seleccionado no tiene "
-                "rol de paciente."
-            )
-
             raise serializers.ValidationError({
-                "patient": (
-                    "El usuario seleccionado no tiene "
-                    "el rol de paciente."
-                ),
+                "patient":
+                "El usuario seleccionado no tiene "
+                "el rol de paciente.",
             })
 
         # ==================================================
-        # SEGURIDAD PARA PACIENTES
+        # SEGURIDAD DEL PACIENTE
         # ==================================================
 
         if (
@@ -385,30 +285,11 @@ class AppointmentSerializer(serializers.ModelSerializer):
             and patient.id != authenticated_user.id
         ):
 
-            print(
-                "[AUDITORÍA][SERIALIZER][APPOINTMENTS] "
-                "ERROR DE SEGURIDAD: El paciente "
-                f"{authenticated_user.username} "
-                "intentó utilizar otro paciente."
-            )
-
             raise serializers.ValidationError({
-                "patient": (
-                    "No puede crear o modificar una cita "
-                    "perteneciente a otro paciente."
-                ),
+                "patient":
+                "No puede crear o modificar una cita "
+                "perteneciente a otro paciente.",
             })
-
-        # ==================================================
-        # ASEGURAR PACIENTE EN DATA
-        # ==================================================
-
-        data["patient"] = patient
-
-        print(
-            "[AUDITORÍA][SERIALIZER][APPOINTMENTS] "
-            f"Paciente validado: {patient.username}"
-        )
 
         # ==================================================
         # TIPO DE CITA
@@ -418,47 +299,19 @@ class AppointmentSerializer(serializers.ModelSerializer):
             "appointment_type",
         )
 
-        # --------------------------------------------------
-        # CREACIÓN
-        # --------------------------------------------------
-
         if is_create and not appointment_type:
 
-            print(
-                "[AUDITORÍA][SERIALIZER][APPOINTMENTS] "
-                "ERROR: Tipo de cita no proporcionado."
-            )
-
             raise serializers.ValidationError({
-                "appointment_type": (
-                    "Este campo es obligatorio."
-                ),
+                "appointment_type":
+                "Este campo es obligatorio.",
             })
 
-        # --------------------------------------------------
-        # ACTUALIZACIÓN COMPLETA
-        # --------------------------------------------------
-
-        if (
-            is_full_update
-            and not appointment_type
-        ):
-
-            print(
-                "[AUDITORÍA][SERIALIZER][APPOINTMENTS] "
-                "ERROR: Tipo de cita no proporcionado "
-                "durante actualización completa."
-            )
+        if is_full_update and not appointment_type:
 
             raise serializers.ValidationError({
-                "appointment_type": (
-                    "Este campo es obligatorio."
-                ),
+                "appointment_type":
+                "Este campo es obligatorio.",
             })
-
-        # --------------------------------------------------
-        # ACTUALIZACIÓN PARCIAL
-        # --------------------------------------------------
 
         if (
             is_partial_update
@@ -471,59 +324,25 @@ class AppointmentSerializer(serializers.ModelSerializer):
 
             data["appointment_type"] = appointment_type
 
-            print(
-                "[AUDITORÍA][SERIALIZER][APPOINTMENTS] "
-                "Se conserva el tipo de cita actual: "
-                f"{appointment_type}"
-            )
-
         # ==================================================
         # FECHA
         # ==================================================
 
         appointment_date = data.get("date")
 
-        # --------------------------------------------------
-        # CREACIÓN
-        # --------------------------------------------------
-
         if is_create and not appointment_date:
 
-            print(
-                "[AUDITORÍA][SERIALIZER][APPOINTMENTS] "
-                "ERROR: Fecha no proporcionada."
-            )
-
             raise serializers.ValidationError({
-                "date": (
-                    "Este campo es obligatorio."
-                ),
+                "date":
+                "Este campo es obligatorio.",
             })
 
-        # --------------------------------------------------
-        # ACTUALIZACIÓN COMPLETA
-        # --------------------------------------------------
-
-        if (
-            is_full_update
-            and not appointment_date
-        ):
-
-            print(
-                "[AUDITORÍA][SERIALIZER][APPOINTMENTS] "
-                "ERROR: Fecha no proporcionada "
-                "durante actualización completa."
-            )
+        if is_full_update and not appointment_date:
 
             raise serializers.ValidationError({
-                "date": (
-                    "Este campo es obligatorio."
-                ),
+                "date":
+                "Este campo es obligatorio.",
             })
-
-        # --------------------------------------------------
-        # ACTUALIZACIÓN PARCIAL
-        # --------------------------------------------------
 
         if (
             is_partial_update
@@ -534,59 +353,25 @@ class AppointmentSerializer(serializers.ModelSerializer):
 
             data["date"] = appointment_date
 
-            print(
-                "[AUDITORÍA][SERIALIZER][APPOINTMENTS] "
-                "Se conserva la fecha actual: "
-                f"{appointment_date}"
-            )
-
         # ==================================================
         # HORA
         # ==================================================
 
         appointment_time = data.get("time")
 
-        # --------------------------------------------------
-        # CREACIÓN
-        # --------------------------------------------------
-
         if is_create and not appointment_time:
 
-            print(
-                "[AUDITORÍA][SERIALIZER][APPOINTMENTS] "
-                "ERROR: Hora no proporcionada."
-            )
-
             raise serializers.ValidationError({
-                "time": (
-                    "Este campo es obligatorio."
-                ),
+                "time":
+                "Este campo es obligatorio.",
             })
 
-        # --------------------------------------------------
-        # ACTUALIZACIÓN COMPLETA
-        # --------------------------------------------------
-
-        if (
-            is_full_update
-            and not appointment_time
-        ):
-
-            print(
-                "[AUDITORÍA][SERIALIZER][APPOINTMENTS] "
-                "ERROR: Hora no proporcionada "
-                "durante actualización completa."
-            )
+        if is_full_update and not appointment_time:
 
             raise serializers.ValidationError({
-                "time": (
-                    "Este campo es obligatorio."
-                ),
+                "time":
+                "Este campo es obligatorio.",
             })
-
-        # --------------------------------------------------
-        # ACTUALIZACIÓN PARCIAL
-        # --------------------------------------------------
 
         if (
             is_partial_update
@@ -597,21 +382,11 @@ class AppointmentSerializer(serializers.ModelSerializer):
 
             data["time"] = appointment_time
 
-            print(
-                "[AUDITORÍA][SERIALIZER][APPOINTMENTS] "
-                "Se conserva la hora actual: "
-                f"{appointment_time}"
-            )
-
         # ==================================================
         # PROFESIONALES
         # ==================================================
 
         if is_partial_update:
-
-            # ----------------------------------------------
-            # MÉDICO
-            # ----------------------------------------------
 
             if "doctor" not in data:
 
@@ -619,33 +394,15 @@ class AppointmentSerializer(serializers.ModelSerializer):
 
                 data["doctor"] = doctor
 
-                print(
-                    "[AUDITORÍA][SERIALIZER][APPOINTMENTS] "
-                    "Se conserva el médico actual: "
-                    f"{doctor.username if doctor else 'Sin asignar'}"
-                )
-
             else:
 
                 doctor = data.get("doctor")
 
-            # ----------------------------------------------
-            # ESTETICISTA
-            # ----------------------------------------------
-
             if "esthetician" not in data:
 
-                esthetician = (
-                    self.instance.esthetician
-                )
+                esthetician = self.instance.esthetician
 
                 data["esthetician"] = esthetician
-
-                print(
-                    "[AUDITORÍA][SERIALIZER][APPOINTMENTS] "
-                    "Se conserva la esteticista actual: "
-                    f"{esthetician.username if esthetician else 'Sin asignar'}"
-                )
 
             else:
 
@@ -662,22 +419,15 @@ class AppointmentSerializer(serializers.ModelSerializer):
             )
 
         # ==================================================
-        # NO PERMITIR DOS PROFESIONALES
+        # NO DOS PROFESIONALES
         # ==================================================
 
         if doctor and esthetician:
 
-            print(
-                "[AUDITORÍA][SERIALIZER][APPOINTMENTS] "
-                "ERROR: Se intentaron asignar "
-                "dos profesionales."
-            )
-
             raise serializers.ValidationError({
-                "professional": (
-                    "Una cita no puede tener un doctor y "
-                    "una esteticista asignados al mismo tiempo."
-                ),
+                "professional":
+                "Una cita no puede tener un doctor y "
+                "una esteticista asignados al mismo tiempo.",
             })
 
         # ==================================================
@@ -688,23 +438,11 @@ class AppointmentSerializer(serializers.ModelSerializer):
 
             if doctor.role != "doctor":
 
-                print(
-                    "[AUDITORÍA][SERIALIZER][APPOINTMENTS] "
-                    "ERROR: El usuario seleccionado como "
-                    "doctor no tiene rol de doctor."
-                )
-
                 raise serializers.ValidationError({
-                    "doctor": (
-                        "El usuario seleccionado no tiene "
-                        "el rol de doctor."
-                    ),
+                    "doctor":
+                    "El usuario seleccionado no tiene "
+                    "el rol de doctor.",
                 })
-
-            print(
-                "[AUDITORÍA][SERIALIZER][APPOINTMENTS] "
-                f"Doctor validado: {doctor.username}"
-            )
 
         # ==================================================
         # VALIDAR ESTETICISTA
@@ -714,28 +452,76 @@ class AppointmentSerializer(serializers.ModelSerializer):
 
             if esthetician.role != "esthetician":
 
-                print(
-                    "[AUDITORÍA][SERIALIZER][APPOINTMENTS] "
-                    "ERROR: El usuario seleccionado como "
-                    "esteticista no tiene rol válido."
-                )
-
                 raise serializers.ValidationError({
-                    "esthetician": (
-                        "El usuario seleccionado no tiene "
-                        "el rol de esteticista."
-                    ),
+                    "esthetician":
+                    "El usuario seleccionado no tiene "
+                    "el rol de esteticista.",
                 })
 
-            print(
-                "[AUDITORÍA][SERIALIZER][APPOINTMENTS] "
-                "Esteticista validada: "
-                f"{esthetician.username}"
-            )
+        # ==================================================
+        # VALIDAR TIPO DE CITA
+        # ==================================================
+
+        valid_types = dict(
+            Appointment.TYPE_CHOICES
+        )
+
+        if appointment_type not in valid_types:
+
+            raise serializers.ValidationError({
+                "appointment_type":
+                "El tipo de cita seleccionado no es válido.",
+            })
 
         # ==================================================
-        # AUDITORÍA DE DATOS
+        # VALIDACIÓN DE ESTADO
         # ==================================================
+
+        if self.instance is not None:
+
+            current_status = self.instance.status
+
+            if current_status == "cancelled":
+
+                raise serializers.ValidationError({
+                    "status":
+                    "Una cita cancelada no puede modificarse.",
+                })
+
+        # ==================================================
+        # VALIDAR DISPONIBILIDAD DEL PACIENTE
+        # ==================================================
+
+        duplicate_appointment = Appointment.objects.filter(
+            patient=patient,
+            date=appointment_date,
+            time=appointment_time,
+        )
+
+        if self.instance is not None:
+
+            duplicate_appointment = (
+                duplicate_appointment.exclude(
+                    pk=self.instance.pk,
+                )
+            )
+
+        if duplicate_appointment.exists():
+
+            raise serializers.ValidationError({
+                "date":
+                "Ya existe una cita para este paciente "
+                "en esta fecha y hora.",
+            })
+
+        # ==================================================
+        # AUDITORÍA
+        # ==================================================
+
+        print(
+            "[AUDITORÍA][SERIALIZER][APPOINTMENTS] "
+            f"Paciente: {patient.username}"
+        )
 
         print(
             "[AUDITORÍA][SERIALIZER][APPOINTMENTS] "
@@ -749,12 +535,12 @@ class AppointmentSerializer(serializers.ModelSerializer):
 
         print(
             "[AUDITORÍA][SERIALIZER][APPOINTMENTS] "
-            f"Tipo de cita: {appointment_type}"
+            f"Tipo: {appointment_type}"
         )
 
         print(
             "[AUDITORÍA][SERIALIZER][APPOINTMENTS] "
-            f"Médico: "
+            f"Doctor: "
             f"{doctor.username if doctor else 'Sin asignar'}"
         )
 
@@ -763,10 +549,6 @@ class AppointmentSerializer(serializers.ModelSerializer):
             f"Esteticista: "
             f"{esthetician.username if esthetician else 'Sin asignar'}"
         )
-
-        # ==================================================
-        # AUDITORÍA FINAL
-        # ==================================================
 
         print(
             "[AUDITORÍA][SERIALIZER][APPOINTMENTS] "

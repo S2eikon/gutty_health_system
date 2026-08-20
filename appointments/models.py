@@ -3,8 +3,10 @@
 # GUTTY HEALTH SYSTEM
 # ======================================================
 
-from django.db import models
+from datetime import time
+
 from django.core.exceptions import ValidationError
+from django.db import models
 
 from users.models import User
 
@@ -15,236 +17,195 @@ from users.models import User
 
 class Appointment(models.Model):
 
-    # ======================================================
+    # ==================================================
     # TIPOS DE CITA
-    # ======================================================
+    # ==================================================
 
     TYPE_CHOICES = [
-
         (
-            'first',
-            'Primera cita dermatología'
+            "first",
+            "Primera cita dermatología",
         ),
-
         (
-            'control',
-            'Control dermatológico'
+            "control",
+            "Control dermatológico",
         ),
-
         (
-            'followup',
-            'Seguimiento tratamiento'
+            "followup",
+            "Seguimiento tratamiento",
         ),
-
         (
-            'delivery',
-            'Entrega medicamentos'
+            "delivery",
+            "Entrega medicamentos",
         ),
-
         (
-            'spa',
-            'Spa Natural Gutty'
+            "spa",
+            "Spa Natural Gutty",
         ),
-
         (
-            'cosmetic',
-            'Limpieza facial'
+            "cosmetic",
+            "Limpieza facial",
         ),
-
     ]
 
-
-    # ======================================================
+    # ==================================================
     # ESTADOS DE LA CITA
-    # ======================================================
+    # ==================================================
 
     STATUS_CHOICES = [
-
         (
-            'pending',
-            'Pendiente'
+            "pending",
+            "Pendiente",
         ),
-
         (
-            'confirmed',
-            'Confirmada'
+            "confirmed",
+            "Confirmada",
         ),
-
         (
-            'cancelled',
-            'Cancelada'
+            "cancelled",
+            "Cancelada",
         ),
-
         (
-            'rescheduled',
-            'Reprogramada'
+            "rescheduled",
+            "Reprogramada",
         ),
-
     ]
 
-
-    # ======================================================
+    # ==================================================
     # PACIENTE
-    # ======================================================
+    # ==================================================
 
     patient = models.ForeignKey(
-
         User,
-
         on_delete=models.CASCADE,
-
-        related_name='appointments_as_patient'
-
+        related_name="appointments_as_patient",
     )
 
-
-    # ======================================================
+    # ==================================================
     # DOCTOR
-    # ======================================================
+    # ==================================================
 
     doctor = models.ForeignKey(
-
         User,
-
         on_delete=models.SET_NULL,
-
         null=True,
-
         blank=True,
-
-        related_name='appointments_as_doctor'
-
+        related_name="appointments_as_doctor",
     )
 
-
-    # ======================================================
+    # ==================================================
     # ESTETICISTA
-    # ======================================================
+    # ==================================================
 
     esthetician = models.ForeignKey(
-
         User,
-
         on_delete=models.SET_NULL,
-
         null=True,
-
         blank=True,
-
-        related_name='appointments_as_esthetician'
-
+        related_name="appointments_as_esthetician",
     )
 
-
-    # ======================================================
+    # ==================================================
     # TIPO DE CITA
-    # ======================================================
+    # ==================================================
 
     appointment_type = models.CharField(
-
         max_length=30,
-
-        choices=TYPE_CHOICES
-
+        choices=TYPE_CHOICES,
     )
 
-
-    # ======================================================
+    # ==================================================
     # FECHA
-    # ======================================================
+    # ==================================================
 
     date = models.DateField()
 
-
-    # ======================================================
+    # ==================================================
     # HORA
-    # ======================================================
+    # ==================================================
 
     time = models.TimeField()
 
-
-    # ======================================================
+    # ==================================================
     # ESTADO
-    # ======================================================
+    # ==================================================
 
     status = models.CharField(
-
         max_length=20,
-
         choices=STATUS_CHOICES,
-
-        default='pending'
-
+        default="pending",
     )
 
-
-    # ======================================================
+    # ==================================================
     # FECHA DE CREACIÓN
-    # ======================================================
+    # ==================================================
 
     created_at = models.DateTimeField(
-
-        auto_now_add=True
-
+        auto_now_add=True,
     )
 
-
-    # ======================================================
+    # ==================================================
     # RECORDATORIOS
-    # ======================================================
-    #
-    # Estos campos registran el envío de recordatorios
-    # por correo electrónico.
-    #
-    # Son independientes de las notificaciones
-    # internas del sistema.
-    #
-    # ======================================================
+    # ==================================================
 
     reminder_sent = models.BooleanField(
-
-        default=False
-
+        default=False,
     )
 
     reminder_sent_at = models.DateTimeField(
-
         null=True,
-
-        blank=True
-
+        blank=True,
     )
 
+    # ==================================================
+    # RESTRICCIONES DE BASE DE DATOS
+    # ==================================================
 
-    # ======================================================
+    class Meta:
+
+        ordering = [
+            "date",
+            "time",
+        ]
+
+        constraints = [
+            models.UniqueConstraint(
+                fields=[
+                    "patient",
+                    "date",
+                    "time",
+                ],
+                name="unique_patient_appointment_datetime",
+            ),
+        ]
+
+    # ==================================================
     # VALIDACIONES
-    # ======================================================
+    # ==================================================
 
     def clean(self):
 
         # ==================================================
-        # VALIDAR FECHA Y HORA
+        # VALIDAR FECHA
         # ==================================================
 
         if self.date is None:
 
             raise ValidationError({
-
-                'date':
-                'La fecha de la cita es obligatoria.'
-
+                "date":
+                "La fecha de la cita es obligatoria.",
             })
 
+        # ==================================================
+        # VALIDAR HORA
+        # ==================================================
 
         if self.time is None:
 
             raise ValidationError({
-
-                'time':
-                'La hora de la cita es obligatoria.'
-
+                "time":
+                "La hora de la cita es obligatoria.",
             })
-
 
         # ==================================================
         # VALIDAR PACIENTE
@@ -253,80 +214,47 @@ class Appointment(models.Model):
         if self.patient is None:
 
             raise ValidationError({
-
-                'patient':
-                'El paciente es obligatorio.'
-
+                "patient":
+                "El paciente es obligatorio.",
             })
-
 
         # ==================================================
         # VALIDAR ROL DEL PACIENTE
         # ==================================================
 
-        if self.patient.role != 'patient':
+        if self.patient.role != "patient":
 
             raise ValidationError({
-
-                'patient':
-                'El usuario seleccionado debe tener '
-                'el rol de paciente.'
-
+                "patient":
+                "El usuario seleccionado debe tener "
+                "el rol de paciente.",
             })
-
 
         # ==================================================
         # VALIDAR HORARIO
         # ==================================================
-        #
-        # Las citas están permitidas desde las 13:00
-        # hasta las 19:00.
-        #
-        # 13:00 -> permitido
-        # 18:59 -> permitido
-        # 19:00 -> permitido
-        #
-        # Después de las 19:00 -> rechazado.
-        #
-        # ==================================================
-
-        from datetime import time
 
         opening_time = time(
-
             hour=13,
-
-            minute=0
-
+            minute=0,
         )
 
         closing_time = time(
-
             hour=19,
-
-            minute=0
-
+            minute=0,
         )
 
-
         if not (
-
             opening_time
-            <=
-            self.time
-            <=
-            closing_time
-
+            <= self.time
+            <= closing_time
         ):
 
             raise ValidationError({
-
-                'time':
-                'Las citas solo se permiten '
-                'de 1:00 PM a 7:00 PM.'
-
+                "time":
+                "Las citas solo se permiten "
+                "de 1:00 PM a 7:00 PM.",
             })
-
 
         # ==================================================
         # VALIDAR DOCTOR
@@ -334,16 +262,13 @@ class Appointment(models.Model):
 
         if self.doctor is not None:
 
-            if self.doctor.role != 'doctor':
+            if self.doctor.role != "doctor":
 
                 raise ValidationError({
-
-                    'doctor':
-                    'El usuario seleccionado como doctor '
-                    'debe tener el rol Doctor.'
-
+                    "doctor":
+                    "El usuario seleccionado como doctor "
+                    "debe tener el rol Doctor.",
                 })
-
 
         # ==================================================
         # VALIDAR ESTETICISTA
@@ -351,120 +276,91 @@ class Appointment(models.Model):
 
         if self.esthetician is not None:
 
-            if self.esthetician.role != 'esthetician':
+            if self.esthetician.role != "esthetician":
 
                 raise ValidationError({
-
-                    'esthetician':
-                    'El usuario seleccionado como esteticista '
-                    'debe tener el rol Esteticista.'
-
+                    "esthetician":
+                    "El usuario seleccionado como esteticista "
+                    "debe tener el rol Esteticista.",
                 })
-
 
         # ==================================================
         # VALIDAR PROFESIONAL ASIGNADO
         # ==================================================
-        #
-        # Una cita no puede tener simultáneamente:
-        #
-        # - Doctor
-        # - Esteticista
-        #
-        # Debe tener uno de los dos o ninguno,
-        # dependiendo de las reglas del negocio.
-        #
-        # ==================================================
 
         if (
-
             self.doctor is not None
-
-            and
-
-            self.esthetician is not None
-
+            and self.esthetician is not None
         ):
 
             raise ValidationError({
-
-                'professional':
-                'Una cita no puede tener un doctor y '
-                'una esteticista asignados al mismo tiempo.'
-
+                "professional":
+                "Una cita no puede tener un doctor y "
+                "una esteticista asignados al mismo tiempo.",
             })
-
 
         # ==================================================
         # EVITAR CITAS DUPLICADAS
         # ==================================================
-        #
-        # Un mismo paciente no puede tener dos citas
-        # exactamente en la misma fecha y hora.
-        #
-        # Se excluye la propia cita cuando se está editando.
-        #
-        # ==================================================
 
         exists = Appointment.objects.filter(
-
             patient=self.patient,
-
             date=self.date,
-
-            time=self.time
-
+            time=self.time,
         ).exclude(
-
-            id=self.id
-
+            pk=self.pk,
         ).exists()
-
 
         if exists:
 
             raise ValidationError({
-
-                'date':
-                'Ya existe una cita para este paciente '
-                'en esta fecha y hora.'
-
+                "date":
+                "Ya existe una cita para este paciente "
+                "en esta fecha y hora.",
             })
-
 
     # ======================================================
     # GUARDAR
     # ======================================================
 
     def save(
-
         self,
-
         *args,
-
-        **kwargs
-
+        **kwargs,
     ):
 
-        # ==================================================
-        # EJECUTAR VALIDACIONES ANTES DE GUARDAR
-        # ==================================================
+        fields_that_require_validation = {
+            "patient",
+            "doctor",
+            "esthetician",
+            "appointment_type",
+            "date",
+            "time",
+        }
 
-        self.clean()
-
-
-        # ==================================================
-        # GUARDAR EN BASE DE DATOS
-        # ==================================================
-
-        super().save(
-
-            *args,
-
-            **kwargs
-
+        update_fields = kwargs.get(
+            "update_fields",
         )
 
+        should_validate = (
+            self.pk is None
+            or
+            update_fields is None
+            or
+            bool(
+                fields_that_require_validation
+                & set(update_fields)
+            )
+        )
+
+        if should_validate:
+
+            self.full_clean()
+
+        super().save(
+            *args,
+            **kwargs,
+        )
 
     # ======================================================
     # REPRESENTACIÓN
@@ -473,22 +369,13 @@ class Appointment(models.Model):
     def __str__(self):
 
         patient_name = (
-
             self.patient.get_full_name()
-
             or
-
             self.patient.username
-
         )
 
-
         return (
-
             f"{patient_name} - "
-
             f"{self.date} "
-
             f"{self.time}"
-
         )

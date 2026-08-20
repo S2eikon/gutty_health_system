@@ -1,12 +1,19 @@
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.response import Response
-from rest_framework import status
-from rest_framework.pagination import PageNumberPagination
+# ======================================================
+# APPOINTMENTS / VIEWS.PY
+# GUTTY HEALTH SYSTEM
+# AUDITORÍA Y SEGURIDAD COMPLETA
+# ======================================================
 
+from django.conf import settings
+from django.core.mail import send_mail
+from django.db import IntegrityError, transaction
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
-from django.core.mail import send_mail
-from django.conf import settings
+
+from rest_framework import status
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.pagination import PageNumberPagination
+from rest_framework.response import Response
 
 from users.permissions import (
     IsAdmin,
@@ -35,30 +42,32 @@ def appointments_api(request):
         "Consulta de listado de citas."
     )
 
-    print(
-        "[AUDITORÍA][APPOINTMENTS] "
-        f"Usuario: {request.user.username}"
-    )
-
-    print(
-        "[AUDITORÍA][APPOINTMENTS] "
-        f"Rol: {request.user.role}"
-    )
+    # ==================================================
+    # FILTRAR SEGÚN ROL
+    # ==================================================
 
     if request.user.role == "patient":
 
         appointments = Appointment.objects.filter(
-            patient=request.user
+            patient=request.user,
+        ).select_related(
+            "patient",
+            "doctor",
+            "esthetician",
         ).order_by(
             "date",
-            "time"
+            "time",
         )
 
     else:
 
-        appointments = Appointment.objects.all().order_by(
+        appointments = Appointment.objects.select_related(
+            "patient",
+            "doctor",
+            "esthetician",
+        ).order_by(
             "date",
-            "time"
+            "time",
         )
 
     # ==================================================
@@ -68,22 +77,20 @@ def appointments_api(request):
     paginator = PageNumberPagination()
 
     paginator.page_size = 20
-
     paginator.page_size_query_param = "page_size"
-
     paginator.max_page_size = 100
 
     paginated_appointments = paginator.paginate_queryset(
         appointments,
-        request
+        request,
     )
 
     serializer = AppointmentSerializer(
         paginated_appointments,
         many=True,
         context={
-            "request": request
-        }
+            "request": request,
+        },
     )
 
     # ==================================================
@@ -99,16 +106,11 @@ def appointments_api(request):
             f"El usuario {request.user.username} "
             f"consultó la lista de citas."
         ),
-        request=request
-    )
-
-    print(
-        "[AUDITORÍA][APPOINTMENTS] "
-        "Listado consultado correctamente."
+        request=request,
     )
 
     return paginator.get_paginated_response(
-        serializer.data
+        serializer.data,
     )
 
 
@@ -125,72 +127,85 @@ def create_appointment_api(request):
         "Solicitud para crear cita."
     )
 
-    print(
-        "[AUDITORÍA][APPOINTMENTS] "
-        f"Usuario: {request.user.username}"
-    )
-
-    print(
-        "[AUDITORÍA][APPOINTMENTS] "
-        f"Rol: {request.user.role}"
-    )
-
-    print(
-        "[AUDITORÍA][APPOINTMENTS] "
-        f"Datos recibidos: {request.data}"
-    )
-
     serializer = AppointmentSerializer(
         data=request.data,
         context={
-            "request": request
-        }
+            "request": request,
+        },
     )
 
-    if serializer.is_valid():
-
-        appointment = serializer.save()
-
-        # ==================================================
-        # AUDITORÍA - CREAR CITA
-        # ==================================================
-
-        create_audit(
-            user=request.user,
-            action="create",
-            module="appointments",
-            object_id=appointment.id,
-            description=(
-                f"El usuario {request.user.username} "
-                f"creó la cita con ID {appointment.id}."
-            ),
-            request=request
-        )
+    if not serializer.is_valid():
 
         print(
             "[AUDITORÍA][APPOINTMENTS] "
-            "Cita creada correctamente."
+            f"Error de validación: {serializer.errors}"
         )
 
         return Response(
-            AppointmentSerializer(
-                appointment,
-                context={
-                    "request": request
-                }
-            ).data,
-            status=status.HTTP_201_CREATED
+            serializer.errors,
+            status=status.HTTP_400_BAD_REQUEST,
         )
 
-    print(
-        "[AUDITORÍA][APPOINTMENTS] "
-        f"Error de validación al crear cita: "
-        f"{serializer.errors}"
-    )
+    try:
+
+        with transaction.atomic():
+
+            appointment = serializer.save()
+
+            create_audit(
+                user=request.user,
+                action="create",
+                module="appointments",
+                object_id=appointment.id,
+                description=(
+                    f"El usuario {request.user.username} "
+                    f"creó la cita con ID "
+                    f"{appointment.id}."
+                ),
+                request=request,
+            )
+
+    except IntegrityError:
+
+        print(
+            "[AUDITORÍA][APPOINTMENTS] "
+            "Conflicto de integridad al crear cita."
+        )
+
+        return Response(
+            {
+                "error":
+                "No fue posible crear la cita porque "
+                "ya existe una cita del mismo paciente "
+                "en la misma fecha y hora.",
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    except Exception as exc:
+
+        print(
+            "[AUDITORÍA][APPOINTMENTS] "
+            f"Error al crear cita: {exc}"
+        )
+
+        return Response(
+            {
+                "error":
+                "No fue posible crear la cita. "
+                "Verifique los datos ingresados.",
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
     return Response(
-        serializer.errors,
-        status=status.HTTP_400_BAD_REQUEST
+        AppointmentSerializer(
+            appointment,
+            context={
+                "request": request,
+            },
+        ).data,
+        status=status.HTTP_201_CREATED,
     )
 
 
@@ -202,92 +217,197 @@ def create_appointment_api(request):
 @permission_classes([IsAdminOrPatient])
 def update_appointment_api(
     request,
-    appointment_id
+    appointment_id,
 ):
 
-    print(
-        "[AUDITORÍA][APPOINTMENTS] "
-        "Solicitud para actualizar cita."
-    )
-
-    print(
-        "[AUDITORÍA][APPOINTMENTS] "
-        f"Usuario: {request.user.username}"
-    )
-
-    print(
-        "[AUDITORÍA][APPOINTMENTS] "
-        f"Rol: {request.user.role}"
-    )
+    # ==================================================
+    # OBTENER CITA SEGÚN ROL
+    # ==================================================
 
     if request.user.role == "patient":
 
         appointment = get_object_or_404(
             Appointment,
             id=appointment_id,
-            patient=request.user
+            patient=request.user,
         )
 
     else:
 
         appointment = get_object_or_404(
             Appointment,
-            id=appointment_id
+            id=appointment_id,
         )
+
+    # ==================================================
+    # VALIDAR ESTADO
+    # ==================================================
+
+    if appointment.status == "cancelled":
+
+        return Response(
+            {
+                "error":
+                "Una cita cancelada no puede modificarse.",
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    # ==================================================
+    # DATOS ANTERIORES
+    # ==================================================
+
+    old_date = appointment.date
+    old_time = appointment.time
+    old_type = appointment.appointment_type
+    old_doctor = appointment.doctor
+    old_esthetician = appointment.esthetician
+
+    # ==================================================
+    # SERIALIZACIÓN
+    # ==================================================
 
     serializer = AppointmentSerializer(
         appointment,
         data=request.data,
         partial=True,
         context={
-            "request": request
-        }
+            "request": request,
+        },
     )
 
-    if serializer.is_valid():
+    if not serializer.is_valid():
 
-        appointment = serializer.save()
-
-        # ==================================================
-        # AUDITORÍA - ACTUALIZAR CITA
-        # ==================================================
-
-        create_audit(
-            user=request.user,
-            action="update",
-            module="appointments",
-            object_id=appointment.id,
-            description=(
-                f"El usuario {request.user.username} "
-                f"actualizó la cita con ID {appointment.id}."
-            ),
-            request=request
+        return Response(
+            serializer.errors,
+            status=status.HTTP_400_BAD_REQUEST,
         )
+
+    try:
+
+        with transaction.atomic():
+
+            appointment = serializer.save()
+
+            changes = []
+
+            if old_date != appointment.date:
+
+                changes.append(
+                    f"fecha: {old_date} → "
+                    f"{appointment.date}"
+                )
+
+            if old_time != appointment.time:
+
+                changes.append(
+                    f"hora: {old_time} → "
+                    f"{appointment.time}"
+                )
+
+            if old_type != appointment.appointment_type:
+
+                changes.append(
+                    f"tipo: {old_type} → "
+                    f"{appointment.appointment_type}"
+                )
+
+            if old_doctor != appointment.doctor:
+
+                old_name = (
+                    old_doctor.username
+                    if old_doctor
+                    else "Sin asignar"
+                )
+
+                new_name = (
+                    appointment.doctor.username
+                    if appointment.doctor
+                    else "Sin asignar"
+                )
+
+                changes.append(
+                    f"doctor: {old_name} → {new_name}"
+                )
+
+            if old_esthetician != appointment.esthetician:
+
+                old_name = (
+                    old_esthetician.username
+                    if old_esthetician
+                    else "Sin asignar"
+                )
+
+                new_name = (
+                    appointment.esthetician.username
+                    if appointment.esthetician
+                    else "Sin asignar"
+                )
+
+                changes.append(
+                    "esteticista: "
+                    f"{old_name} → {new_name}"
+                )
+
+            description = (
+                f"El usuario {request.user.username} "
+                f"actualizó la cita con ID "
+                f"{appointment.id}."
+            )
+
+            if changes:
+
+                description += (
+                    " Cambios: "
+                    + "; ".join(changes)
+                    + "."
+                )
+
+            create_audit(
+                user=request.user,
+                action="update",
+                module="appointments",
+                object_id=appointment.id,
+                description=description,
+                request=request,
+            )
+
+    except IntegrityError:
+
+        return Response(
+            {
+                "error":
+                "No fue posible actualizar la cita "
+                "porque ya existe otra cita del paciente "
+                "en la misma fecha y hora.",
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    except Exception as exc:
 
         print(
             "[AUDITORÍA][APPOINTMENTS] "
-            "Cita actualizada correctamente."
+            f"Error al actualizar cita: {exc}"
         )
 
         return Response(
-            AppointmentSerializer(
-                appointment,
-                context={
-                    "request": request
-                }
-            ).data,
-            status=status.HTTP_200_OK
+            {
+                "error":
+                "No fue posible actualizar la cita. "
+                "Verifique los datos ingresados.",
+            },
+            status=status.HTTP_400_BAD_REQUEST,
         )
 
-    print(
-        "[AUDITORÍA][APPOINTMENTS] "
-        f"Error de validación al actualizar: "
-        f"{serializer.errors}"
-    )
-
     return Response(
-        serializer.errors,
-        status=status.HTTP_400_BAD_REQUEST
+        AppointmentSerializer(
+            appointment,
+            context={
+                "request": request,
+            },
+        ).data,
+        status=status.HTTP_200_OK,
     )
 
 
@@ -299,12 +419,12 @@ def update_appointment_api(
 @permission_classes([IsAdminOrDoctor])
 def confirm_appointment_api(
     request,
-    appointment_id
+    appointment_id,
 ):
 
     appointment = get_object_or_404(
         Appointment,
-        id=appointment_id
+        id=appointment_id,
     )
 
     if appointment.status == "confirmed":
@@ -312,9 +432,9 @@ def confirm_appointment_api(
         return Response(
             {
                 "error":
-                "La cita ya está confirmada."
+                "La cita ya está confirmada.",
             },
-            status=status.HTTP_400_BAD_REQUEST
+            status=status.HTTP_400_BAD_REQUEST,
         )
 
     if appointment.status == "cancelled":
@@ -322,39 +442,43 @@ def confirm_appointment_api(
         return Response(
             {
                 "error":
-                "No se puede confirmar una cita cancelada."
+                "No se puede confirmar una cita cancelada.",
             },
-            status=status.HTTP_400_BAD_REQUEST
+            status=status.HTTP_400_BAD_REQUEST,
         )
 
-    appointment.status = "confirmed"
+    old_status = appointment.status
 
-    appointment.save(
-        update_fields=["status"]
-    )
+    with transaction.atomic():
 
-    # ==================================================
-    # AUDITORÍA
-    # ==================================================
+        appointment.status = "confirmed"
 
-    create_audit(
-        user=request.user,
-        action="confirm",
-        module="appointments",
-        object_id=appointment.id,
-        description=(
-            f"El usuario {request.user.username} "
-            f"confirmó la cita con ID {appointment.id}."
-        ),
-        request=request
-    )
+        appointment.save(
+            update_fields=[
+                "status",
+            ],
+        )
+
+        create_audit(
+            user=request.user,
+            action="confirm",
+            module="appointments",
+            object_id=appointment.id,
+            description=(
+                f"El usuario {request.user.username} "
+                f"cambió el estado de la cita "
+                f"{appointment.id}: "
+                f"{old_status} → confirmed."
+            ),
+            request=request,
+        )
 
     return Response(
         {
             "message":
-            "Cita confirmada correctamente."
+            "Cita confirmada correctamente.",
         },
-        status=status.HTTP_200_OK
+        status=status.HTTP_200_OK,
     )
 
 
@@ -366,12 +490,12 @@ def confirm_appointment_api(
 @permission_classes([IsAdminOrDoctor])
 def cancel_appointment_api(
     request,
-    appointment_id
+    appointment_id,
 ):
 
     appointment = get_object_or_404(
         Appointment,
-        id=appointment_id
+        id=appointment_id,
     )
 
     if appointment.status == "cancelled":
@@ -379,39 +503,42 @@ def cancel_appointment_api(
         return Response(
             {
                 "error":
-                "La cita ya fue cancelada."
+                "La cita ya fue cancelada.",
             },
-            status=status.HTTP_400_BAD_REQUEST
+            status=status.HTTP_400_BAD_REQUEST,
         )
 
-    appointment.status = "cancelled"
+    old_status = appointment.status
 
-    appointment.save(
-        update_fields=["status"]
-    )
+    with transaction.atomic():
 
-    # ==================================================
-    # AUDITORÍA
-    # ==================================================
+        appointment.status = "cancelled"
 
-    create_audit(
-        user=request.user,
-        action="cancel",
-        module="appointments",
-        object_id=appointment.id,
-        description=(
-            f"El usuario {request.user.username} "
-            f"canceló la cita con ID {appointment.id}."
-        ),
-        request=request
-    )
+        appointment.save(
+            update_fields=[
+                "status",
+            ],
+        )
+
+        create_audit(
+            user=request.user,
+            action="cancel",
+            module="appointments",
+            object_id=appointment.id,
+            description=(
+                f"El usuario {request.user.username} "
+                f"canceló la cita {appointment.id}. "
+                f"Estado anterior: {old_status}."
+            ),
+            request=request,
+        )
 
     return Response(
         {
             "message":
-            "Cita cancelada correctamente."
+            "Cita cancelada correctamente.",
         },
-        status=status.HTTP_200_OK
+        status=status.HTTP_200_OK,
     )
 
 
@@ -423,63 +550,169 @@ def cancel_appointment_api(
 @permission_classes([IsAdminOrReceptionist])
 def reschedule_appointment_api(
     request,
-    appointment_id
+    appointment_id,
 ):
 
     appointment = get_object_or_404(
         Appointment,
-        id=appointment_id
+        id=appointment_id,
     )
+
+    # ==================================================
+    # VALIDAR ESTADO
+    # ==================================================
 
     if appointment.status == "cancelled":
 
         return Response(
             {
                 "error":
-                "No se puede reprogramar una cita cancelada."
+                "No se puede reprogramar una cita cancelada.",
             },
-            status=status.HTTP_400_BAD_REQUEST
+            status=status.HTTP_400_BAD_REQUEST,
         )
+
+    # ==================================================
+    # VALIDAR QUE REALMENTE SE QUIERA REPROGRAMAR
+    # ==================================================
+
+    if (
+        "date" not in request.data
+        and "time" not in request.data
+    ):
+
+        return Response(
+            {
+                "error":
+                "Para reprogramar debe proporcionar "
+                "una nueva fecha, una nueva hora o ambas.",
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    old_date = appointment.date
+    old_time = appointment.time
+    old_status = appointment.status
+
+    # ==================================================
+    # VALIDAR DATOS
+    # ==================================================
 
     serializer = AppointmentSerializer(
         appointment,
         data=request.data,
         partial=True,
         context={
-            "request": request
-        }
+            "request": request,
+        },
     )
 
     if not serializer.is_valid():
 
-        return Response(
-            serializer.errors,
-            status=status.HTTP_400_BAD_REQUEST
+        print(
+            "[AUDITORÍA][APPOINTMENTS] "
+            f"Error al validar reprogramación: "
+            f"{serializer.errors}"
         )
 
-    appointment = serializer.save()
+        return Response(
+            serializer.errors,
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
-    appointment.status = "rescheduled"
+    new_date = serializer.validated_data.get(
+        "date",
+        appointment.date,
+    )
 
-    appointment.save(
-        update_fields=["status"]
+    new_time = serializer.validated_data.get(
+        "time",
+        appointment.time,
     )
 
     # ==================================================
-    # AUDITORÍA
+    # VALIDAR QUE EXISTA UN CAMBIO REAL
     # ==================================================
 
-    create_audit(
-        user=request.user,
-        action="reschedule",
-        module="appointments",
-        object_id=appointment.id,
-        description=(
-            f"El usuario {request.user.username} "
-            f"reprogramó la cita con ID {appointment.id}."
-        ),
-        request=request
-    )
+    if (
+        new_date == old_date
+        and new_time == old_time
+    ):
+
+        return Response(
+            {
+                "error":
+                "La nueva fecha u hora debe ser "
+                "diferente a la actual.",
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    try:
+
+        with transaction.atomic():
+
+            appointment = serializer.save()
+
+            appointment.status = "rescheduled"
+
+            appointment.save(
+                update_fields=[
+                    "status",
+                ],
+            )
+
+            create_audit(
+                user=request.user,
+                action="reschedule",
+                module="appointments",
+                object_id=appointment.id,
+                description=(
+                    f"El usuario {request.user.username} "
+                    f"reprogramó la cita "
+                    f"{appointment.id}. "
+                    f"Fecha: {old_date} → "
+                    f"{appointment.date}. "
+                    f"Hora: {old_time} → "
+                    f"{appointment.time}. "
+                    f"Estado anterior: {old_status}."
+                ),
+                request=request,
+            )
+
+    except IntegrityError:
+
+        print(
+            "[AUDITORÍA][APPOINTMENTS] "
+            "Conflicto de integridad al reprogramar cita."
+        )
+
+        return Response(
+            {
+                "error":
+                "No fue posible reprogramar la cita "
+                "porque ya existe otra cita del paciente "
+                "en la nueva fecha y hora.",
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    except Exception as exc:
+
+        print(
+            "[AUDITORÍA][APPOINTMENTS] "
+            f"Error al reprogramar cita: {exc}"
+        )
+
+        return Response(
+            {
+                "error":
+                "No fue posible reprogramar la cita. "
+                "Verifique que la nueva fecha y hora "
+                "estén disponibles.",
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
     return Response(
         {
@@ -490,11 +723,11 @@ def reschedule_appointment_api(
             AppointmentSerializer(
                 appointment,
                 context={
-                    "request": request
-                }
-            ).data
+                    "request": request,
+                },
+            ).data,
         },
-        status=status.HTTP_200_OK
+        status=status.HTTP_200_OK,
     )
 
 
@@ -506,19 +739,15 @@ def reschedule_appointment_api(
 @permission_classes([IsAdmin])
 def delete_appointment_api(
     request,
-    appointment_id
+    appointment_id,
 ):
 
     appointment = get_object_or_404(
         Appointment,
-        id=appointment_id
+        id=appointment_id,
     )
 
     appointment_id_deleted = appointment.id
-
-    # ==================================================
-    # AUDITORÍA
-    # ==================================================
 
     create_audit(
         user=request.user,
@@ -530,7 +759,7 @@ def delete_appointment_api(
             f"eliminó la cita con ID "
             f"{appointment_id_deleted}."
         ),
-        request=request
+        request=request,
     )
 
     appointment.delete()
@@ -538,9 +767,9 @@ def delete_appointment_api(
     return Response(
         {
             "message":
-            "Cita eliminada correctamente."
+            "Cita eliminada correctamente.",
         },
-        status=status.HTTP_200_OK
+        status=status.HTTP_200_OK,
     )
 
 
@@ -555,7 +784,7 @@ def dashboard_totals_api(request):
     if request.user.role == "patient":
 
         appointments = Appointment.objects.filter(
-            patient=request.user
+            patient=request.user,
         )
 
     else:
@@ -563,34 +792,29 @@ def dashboard_totals_api(request):
         appointments = Appointment.objects.all()
 
     data = {
-
         "total":
         appointments.count(),
 
         "pending":
         appointments.filter(
-            status="pending"
+            status="pending",
         ).count(),
 
         "confirmed":
         appointments.filter(
-            status="confirmed"
+            status="confirmed",
         ).count(),
 
         "cancelled":
         appointments.filter(
-            status="cancelled"
+            status="cancelled",
         ).count(),
 
         "rescheduled":
         appointments.filter(
-            status="rescheduled"
+            status="rescheduled",
         ).count(),
     }
-
-    # ==================================================
-    # AUDITORÍA
-    # ==================================================
 
     create_audit(
         user=request.user,
@@ -602,12 +826,12 @@ def dashboard_totals_api(request):
             f"consultó el resumen del dashboard "
             f"de citas."
         ),
-        request=request
+        request=request,
     )
 
     return Response(
         data,
-        status=status.HTTP_200_OK
+        status=status.HTTP_200_OK,
     )
 
 
@@ -622,38 +846,32 @@ def calendar_appointments_api(request):
     if request.user.role == "patient":
 
         appointments = Appointment.objects.filter(
-            patient=request.user
+            patient=request.user,
         ).select_related(
             "patient",
-            "doctor"
+            "doctor",
+            "esthetician",
         ).order_by(
             "date",
-            "time"
+            "time",
         )
 
     else:
 
         appointments = Appointment.objects.select_related(
             "patient",
-            "doctor"
+            "doctor",
+            "esthetician",
         ).order_by(
             "date",
-            "time"
+            "time",
         )
 
     STATUS_COLORS = {
-
-        "pending":
-        "#ffc107",
-
-        "confirmed":
-        "#198754",
-
-        "cancelled":
-        "#dc3545",
-
-        "rescheduled":
-        "#0dcaf0",
+        "pending": "#ffc107",
+        "confirmed": "#198754",
+        "cancelled": "#dc3545",
+        "rescheduled": "#0dcaf0",
     }
 
     events = []
@@ -674,69 +892,78 @@ def calendar_appointments_api(request):
                 or appointment.doctor.username
             )
 
-        events.append({
+        esthetician_name = "Sin asignar"
 
-            "id":
-            appointment.id,
+        if appointment.esthetician:
 
-            "title":
-            f"{patient_name} - "
-            f"{appointment.get_appointment_type_display()}",
+            esthetician_name = (
+                appointment.esthetician.get_full_name()
+                or appointment.esthetician.username
+            )
 
-            "start":
-            f"{appointment.date}T{appointment.time}",
+        events.append(
+            {
+                "id":
+                appointment.id,
 
-            "color":
-            STATUS_COLORS.get(
-                appointment.status,
-                "#6c757d"
-            ),
+                "title":
+                f"{patient_name} - "
+                f"{appointment.get_appointment_type_display()}",
 
-            "extendedProps": {
+                "start":
+                f"{appointment.date}T{appointment.time}",
 
-                "patient":
-                patient_name,
-
-                "doctor":
-                doctor_name,
-
-                "status":
-                appointment.status,
-
-                "status_display":
-                appointment.get_status_display(),
-
-                "appointment_type":
-                appointment.get_appointment_type_display(),
-
-                "date":
-                str(appointment.date),
-
-                "time":
-                str(appointment.time)[:5],
-
-                "notes":
-                getattr(
-                    appointment,
-                    "notes",
-                    ""
+                "color":
+                STATUS_COLORS.get(
+                    appointment.status,
+                    "#6c757d",
                 ),
 
-                "phone":
-                getattr(
-                    appointment.patient,
-                    "phone",
-                    ""
-                ),
+                "extendedProps": {
 
-                "email":
-                appointment.patient.email,
+                    "patient":
+                    patient_name,
+
+                    "doctor":
+                    doctor_name,
+
+                    "esthetician":
+                    esthetician_name,
+
+                    "status":
+                    appointment.status,
+
+                    "status_display":
+                    appointment.get_status_display(),
+
+                    "appointment_type":
+                    appointment.get_appointment_type_display(),
+
+                    "date":
+                    str(appointment.date),
+
+                    "time":
+                    str(appointment.time)[:5],
+
+                    "notes":
+                    getattr(
+                        appointment,
+                        "notes",
+                        "",
+                    ),
+
+                    "phone":
+                    getattr(
+                        appointment.patient,
+                        "phone",
+                        "",
+                    ),
+
+                    "email":
+                    appointment.patient.email,
+                },
             }
-        })
-
-    # ==================================================
-    # AUDITORÍA
-    # ==================================================
+        )
 
     create_audit(
         user=request.user,
@@ -747,33 +974,54 @@ def calendar_appointments_api(request):
             f"El usuario {request.user.username} "
             f"consultó el calendario de citas."
         ),
-        request=request
+        request=request,
     )
 
     return Response(
         events,
-        status=status.HTTP_200_OK
+        status=status.HTTP_200_OK,
     )
 
 
 # ======================================================
-# ENVIAR RECORDATORIOS A TODAS LAS CITAS PENDIENTES
+# RECORDATORIOS PENDIENTES
 # ======================================================
 
 @api_view(["POST"])
 @permission_classes([IsAdminDoctorPatientReceptionist])
 def send_pending_reminders_api(request):
 
-    appointments = Appointment.objects.filter(
-        status="pending",
-        reminder_sent=False
-    )
+    # ==================================================
+    # FILTRAR SEGÚN ROL
+    # ==================================================
+
+    if request.user.role == "patient":
+
+        appointments = Appointment.objects.filter(
+            patient=request.user,
+            status="pending",
+            reminder_sent=False,
+        ).select_related(
+            "patient",
+            "doctor",
+        )
+
+    else:
+
+        appointments = Appointment.objects.filter(
+            status="pending",
+            reminder_sent=False,
+        ).select_related(
+            "patient",
+            "doctor",
+        )
 
     enviados = 0
 
     for appointment in appointments:
 
         if not appointment.patient.email:
+
             continue
 
         doctor_name = "Sin asignar"
@@ -785,39 +1033,47 @@ def send_pending_reminders_api(request):
                 or appointment.doctor.username
             )
 
-        send_mail(
-
-            "Recordatorio de cita médica",
-
-            f"""
+        message = f"""
 Hola {appointment.patient.get_full_name() or appointment.patient.username},
 
 Este es un recordatorio de su cita médica.
 
 Fecha: {appointment.date}
-Hora: {appointment.time.strftime('%H:%M')}
+Hora: {appointment.time.strftime("%H:%M")}
 Doctor: {doctor_name}
 Tipo de cita: {appointment.get_appointment_type_display()}
 
 Instituto Médico Asdrúbal Gutty
-""",
+"""
 
-            settings.DEFAULT_FROM_EMAIL,
+        try:
 
-            [appointment.patient.email],
+            send_mail(
+                "Recordatorio de cita médica",
+                message,
+                settings.DEFAULT_FROM_EMAIL,
+                [appointment.patient.email],
+                fail_silently=False,
+            )
 
-            fail_silently=False,
-        )
+        except Exception as exc:
+
+            print(
+                "[AUDITORÍA][APPOINTMENTS] "
+                f"Error enviando recordatorio de cita "
+                f"{appointment.id}: {exc}"
+            )
+
+            continue
 
         appointment.reminder_sent = True
-
         appointment.reminder_sent_at = timezone.now()
 
         appointment.save(
             update_fields=[
                 "reminder_sent",
-                "reminder_sent_at"
-            ]
+                "reminder_sent_at",
+            ],
         )
 
         enviados += 1
@@ -838,42 +1094,75 @@ Instituto Médico Asdrúbal Gutty
                 f"envió {enviados} recordatorio(s) "
                 f"de citas médicas."
             ),
-            request=request
+            request=request,
         )
 
     return Response(
         {
             "message":
-            f"Se enviaron {enviados} recordatorios."
+            f"Se enviaron {enviados} recordatorios.",
         },
-        status=status.HTTP_200_OK
+        status=status.HTTP_200_OK,
     )
 
 
 # ======================================================
-# ENVIAR RECORDATORIO POR CORREO
+# RECORDATORIO INDIVIDUAL
 # ======================================================
 
 @api_view(["POST"])
 @permission_classes([IsAdminDoctorPatientReceptionist])
 def send_reminder_api(
     request,
-    appointment_id
+    appointment_id,
 ):
 
-    appointment = get_object_or_404(
-        Appointment,
-        id=appointment_id
-    )
+    # ==================================================
+    # OBTENER CITA
+    # ==================================================
+
+    if request.user.role == "patient":
+
+        appointment = get_object_or_404(
+            Appointment,
+            id=appointment_id,
+            patient=request.user,
+        )
+
+    else:
+
+        appointment = get_object_or_404(
+            Appointment,
+            id=appointment_id,
+        )
+
+    # ==================================================
+    # VALIDAR ESTADO
+    # ==================================================
+
+    if appointment.status == "cancelled":
+
+        return Response(
+            {
+                "error":
+                "No se puede enviar un recordatorio "
+                "de una cita cancelada.",
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    # ==================================================
+    # VALIDAR CORREO
+    # ==================================================
 
     if not appointment.patient.email:
 
         return Response(
             {
                 "error":
-                "El paciente no tiene un correo registrado."
+                "El paciente no tiene un correo registrado.",
             },
-            status=status.HTTP_400_BAD_REQUEST
+            status=status.HTTP_400_BAD_REQUEST,
         )
 
     subject = "Recordatorio de cita médica"
@@ -893,7 +1182,7 @@ Hola {appointment.patient.get_full_name() or appointment.patient.username},
 Este es un recordatorio de su cita médica.
 
 Fecha: {appointment.date}
-Hora: {appointment.time.strftime('%H:%M')}
+Hora: {appointment.time.strftime("%H:%M")}
 Doctor: {doctor_name}
 Tipo de cita: {appointment.get_appointment_type_display()}
 
@@ -902,23 +1191,41 @@ Por favor llegue con 15 minutos de anticipación.
 Instituto Médico Asdrúbal Gutty
 """
 
-    send_mail(
-        subject,
-        message,
-        settings.DEFAULT_FROM_EMAIL,
-        [appointment.patient.email],
-        fail_silently=False,
-    )
+    try:
+
+        send_mail(
+            subject,
+            message,
+            settings.DEFAULT_FROM_EMAIL,
+            [appointment.patient.email],
+            fail_silently=False,
+        )
+
+    except Exception as exc:
+
+        print(
+            "[AUDITORÍA][APPOINTMENTS] "
+            f"Error enviando recordatorio de cita "
+            f"{appointment.id}: {exc}"
+        )
+
+        return Response(
+            {
+                "error":
+                "No fue posible enviar el recordatorio. "
+                "Verifique la configuración del correo.",
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
     appointment.reminder_sent = True
-
     appointment.reminder_sent_at = timezone.now()
 
     appointment.save(
         update_fields=[
             "reminder_sent",
-            "reminder_sent_at"
-        ]
+            "reminder_sent_at",
+        ],
     )
 
     # ==================================================
@@ -935,13 +1242,13 @@ Instituto Médico Asdrúbal Gutty
             f"envió un recordatorio para la cita "
             f"{appointment.id}."
         ),
-        request=request
+        request=request,
     )
 
     return Response(
         {
             "message":
-            "Recordatorio enviado correctamente."
+            "Recordatorio enviado correctamente.",
         },
-        status=status.HTTP_200_OK
+        status=status.HTTP_200_OK,
     )

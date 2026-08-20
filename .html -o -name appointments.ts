@@ -1,0 +1,30 @@
+1a08f56 | 2026-08-18 | Corrige creación de citas y audita gestión de appointments
+00b4f84 | 2026-08-12 | Corrección del error NG0100 ExpressionChangedAfterItHasBeenCheckedError en Facturación
+bcbc20b | 2026-08-12 | Mejoras en login, manejo de JWT y notificaciones
+6eecc6c | 2026-08-11 | Ajustes y mejoras en módulo PQR y UI
+c614eb1 | 2026-08-10 | Actualiza estilos y colores para mejorar la consistencia visual en Gutty Health System sin alterar funcionalidades
+48c7c16 | 2026-08-07 | Corrige creación de citas y optimiza notificaciones emergentes
+184fa49 | 2026-08-06 | Estabiliza autenticación JWT, refresh token, notificaciones y modo oscuro
+03cb6d0 | 2026-08-05 | Completada auditoría global con JWT, permisos, roles y registros de auditoría
+299a719 | 2026-08-04 | Implementada auditoría completa de citas y recordatorios: creación, actualización, confirmación, cancelación, reprogramación, eliminación, consultas, calendario, dashboard y verificación en AuditLog
+6b59dc8 | 2026-08-03 | Protegida API de pacientes con JWT y auditoría implementada
+2a190b8 | 2026-07-31 | Avances del día: - Desarrollo y puesta en marcha del módulo PQR. - Incorporación del botón 'Ver' para visualización directa de documentos. - Implementación de la primera auditoría del proyecto para mejorar el control y seguimiento de acciones. - Ajustes y mejoras generales para optimizar la experiencia y seguridad del sistema.
+77b4b6c | 2026-07-30 | Funcionalidad Recordatorios por correo
+028e67c | 2026-07-29 | Corrección y mejoras en módulo de documentos médicos
+6dabbff | 2026-07-29 | Implementación completa del módulo de documentos médicos
+aeb1084 | 2026-07-28 | Implementación completa del calendario clínico con integración Angular + Django: - Corrección de carga y uso de Bootstrap JS importando Modal desde 'bootstrap' para evitar error 'bootstrap is not defined'. - Registro del locale español en main.ts para solucionar error 'Missing locale data for locale "es"' en pipes de fecha. - Mejora en la carga de eventos y manejo de estado loading con ChangeDetectorRef y setTimeout para evitar ExpressionChangedAfterItHasBeenCheckedError. - Implementación de modal Bootstrap profesional para mostrar detalles de citas y acciones: Confirmar, Cancelar, Reprogramar. - Ajustes en calendar.ts para llamadas a endpoints Django con JWT y refresco automático del calendario tras acciones. - Limpieza y tipado mejorado con interfaz CalendarEvent. - Configuración segura y estable para Angular y Bootstrap sin afectar backend Django.
+3de13ac | 2026-07-27 | Implementación completa y estabilización del módulo de calendario con sincronización en tiempo real con Django
+56008b5 | 2026-07-24 | Corrección de errores de tipo y mejoras en dashboard y appointments: - Añadidos campos de porcentaje calculados en dashboard y plantilla - Actualizado componente dashboard para manejar campos calculados y gráfico Chart.js - Corregidos métodos de appointments para manejar IDs opcionales de forma segura - Actualizada plantilla appointments para llamar métodos solo con IDs válidos
+8dcdf6a | 2026-07-23 | Implementación y corrección completa del módulo de facturación: backend Django y frontend Angular integrados
+6f09913 | 2026-07-21 | Implementación completa del módulo de Historial Médico: backend Django, servicio Angular, componente, vistas, estilos CSS, rutas y menú de navegación
+c801507 | 2026-07-18 | feat: Habilitar inicio de sesión para roles paciente y doctor
+978b931 | 2026-07-17 | Implementación completa del módulo Perfil de Usuario: carga, edición, cambio de contraseña y persistencia. Integración Angular ↔ Django REST funcionando correctamente.
+728a55e | 2026-07-16 | Implementación completa de sistema de citas: roles, permisos, validaciones, control de acceso y mejoras en Angular
+a10334d | 2026-07-16 | Mejora sistema de citas: roles, permisos, validaciones de estado y control de acceso seguro
+3018e14 | 2026-07-16 | fix: mejorar CRUD de citas con APIs de cancelar y reprogramar, estados de carga y manejo de errores
+be06f95 | 2026-07-15 | feat(auth): interceptor profesional con refresh token y manejo concurrente
+21b49c2 | 2026-07-15 | feat(appointments): controlar visibilidad y estado de botones según estado de cita para evitar acciones inválidas
+26d2fb7 | 2026-07-06 | Implemente la autenticación JWT y proteja la API de citas
+5bc84b9 | 2026-07-01 | Implementar autenticación JWT con interceptor y protectores de ruta
+b9940f3 | 2026-05-14 | Actualización sistema de citas y nuevos estados
+478e61c | 2026-05-09 | Se agrega el Proyecto
