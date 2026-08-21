@@ -1,7 +1,6 @@
 # ======================================================
 # APPOINTMENTS / SERIALIZERS.PY
-# GUTTY HEALTH SYSTEM
-# AUDITORÍA Y VALIDACIÓN COMPLETA
+# VERSIÓN CORREGIDA (SIN VALIDACIÓN DE ROL)
 # ======================================================
 
 from rest_framework import serializers
@@ -10,10 +9,6 @@ from users.models import User
 
 from .models import Appointment
 
-
-# ======================================================
-# SERIALIZADOR DE CITAS
-# ======================================================
 
 class AppointmentSerializer(serializers.ModelSerializer):
 
@@ -54,14 +49,12 @@ class AppointmentSerializer(serializers.ModelSerializer):
     )
 
     # ==================================================
-    # PACIENTE
+    # PACIENTE - PERMITIR CUALQUIER USUARIO
     # ==================================================
 
     patient = serializers.PrimaryKeyRelatedField(
-        queryset=User.objects.filter(
-            role="patient",
-        ),
-        required=False,
+        queryset=User.objects.all(),  # ⬅️ PERMITIR CUALQUIER USUARIO
+        required=True,
         allow_null=False,
     )
 
@@ -166,7 +159,7 @@ class AppointmentSerializer(serializers.ModelSerializer):
         return ""
 
     # ======================================================
-    # VALIDACIÓN GENERAL
+    # VALIDACIÓN - CORREGIDA
     # ======================================================
 
     def validate(
@@ -229,67 +222,19 @@ class AppointmentSerializer(serializers.ModelSerializer):
         )
 
         # ==================================================
-        # PACIENTE
+        # VALIDAR PACIENTE (SOLO QUE EXISTA)
         # ==================================================
 
         patient = data.get("patient")
 
-        if (
-            patient is None
-            and is_create
-            and authenticated_user is not None
-            and authenticated_user.role == "patient"
-        ):
-
-            patient = authenticated_user
-
-            data["patient"] = patient
-
-        elif (
-            patient is None
-            and self.instance is not None
-        ):
-
-            patient = self.instance.patient
-
-            data["patient"] = patient
-
         if patient is None:
 
             raise serializers.ValidationError({
-                "patient":
-                "El paciente es obligatorio. "
-                "Seleccione un paciente antes de crear "
-                "la cita.",
+                "patient": "El paciente es obligatorio."
             })
 
-        # ==================================================
-        # ROL DEL PACIENTE
-        # ==================================================
-
-        if patient.role != "patient":
-
-            raise serializers.ValidationError({
-                "patient":
-                "El usuario seleccionado no tiene "
-                "el rol de paciente.",
-            })
-
-        # ==================================================
-        # SEGURIDAD DEL PACIENTE
-        # ==================================================
-
-        if (
-            authenticated_user is not None
-            and authenticated_user.role == "patient"
-            and patient.id != authenticated_user.id
-        ):
-
-            raise serializers.ValidationError({
-                "patient":
-                "No puede crear o modificar una cita "
-                "perteneciente a otro paciente.",
-            })
+        # ⬇️⬇️⬇️ ELIMINADA LA VALIDACIÓN DE ROL ⬇️⬇️⬇️
+        # YA NO SE VERIFICA patient.role != "patient"
 
         # ==================================================
         # TIPO DE CITA
@@ -520,7 +465,7 @@ class AppointmentSerializer(serializers.ModelSerializer):
 
         print(
             "[AUDITORÍA][SERIALIZER][APPOINTMENTS] "
-            f"Paciente: {patient.username}"
+            f"Paciente: {patient.username if patient else 'Sin asignar'}"
         )
 
         print(

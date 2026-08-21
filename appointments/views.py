@@ -115,7 +115,7 @@ def appointments_api(request):
 
 
 # ======================================================
-# CREAR CITA
+# CREAR CITA - VERSIÓN SIMPLIFICADA Y CORREGIDA
 # ======================================================
 
 @api_view(["POST"])
@@ -127,8 +127,26 @@ def create_appointment_api(request):
         "Solicitud para crear cita."
     )
 
+    # ==================================================
+    # CONSTRUIR LOS DATOS CON EL USUARIO AUTENTICADO
+    # ==================================================
+
+    data = {
+        "patient": request.user.id,  # ⬅️ ASIGNAR EL USUARIO AUTENTICADO
+        "appointment_type": request.data.get("appointment_type"),
+        "date": request.data.get("date"),
+        "time": request.data.get("time"),
+        "doctor": request.data.get("doctor"),
+        "esthetician": request.data.get("esthetician"),
+    }
+
+    print(
+        "[AUDITORÍA][APPOINTMENTS] "
+        f"Datos a crear: {data}"
+    )
+
     serializer = AppointmentSerializer(
-        data=request.data,
+        data=data,
         context={
             "request": request,
         },

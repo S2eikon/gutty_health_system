@@ -219,16 +219,12 @@ class Appointment(models.Model):
             })
 
         # ==================================================
-        # VALIDAR ROL DEL PACIENTE
+        # ⬇️⬇️⬇️ VALIDACIÓN DE ROL DEL PACIENTE ELIMINADA ⬇️⬇️⬇️
         # ==================================================
-
-        if self.patient.role != "patient":
-
-            raise ValidationError({
-                "patient":
-                "El usuario seleccionado debe tener "
-                "el rol de paciente.",
-            })
+        # Ya no se valida que patient.role == "patient"
+        # Esto permite que admin, doctor, esthetician, etc.
+        # puedan ser asignados como pacientes.
+        # ==================================================
 
         # ==================================================
         # VALIDAR HORARIO
