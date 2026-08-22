@@ -219,14 +219,6 @@ class Appointment(models.Model):
             })
 
         # ==================================================
-        # ⬇️⬇️⬇️ VALIDACIÓN DE ROL DEL PACIENTE ELIMINADA ⬇️⬇️⬇️
-        # ==================================================
-        # Ya no se valida que patient.role == "patient"
-        # Esto permite que admin, doctor, esthetician, etc.
-        # puedan ser asignados como pacientes.
-        # ==================================================
-
-        # ==================================================
         # VALIDAR HORARIO
         # ==================================================
 
@@ -281,19 +273,9 @@ class Appointment(models.Model):
                 })
 
         # ==================================================
-        # VALIDAR PROFESIONAL ASIGNADO
+        # ⬇️⬇️⬇️ VALIDACIÓN ELIMINADA ⬇️⬇️⬇️
+        # Ya no se valida que no puedan tener ambos profesionales
         # ==================================================
-
-        if (
-            self.doctor is not None
-            and self.esthetician is not None
-        ):
-
-            raise ValidationError({
-                "professional":
-                "Una cita no puede tener un doctor y "
-                "una esteticista asignados al mismo tiempo.",
-            })
 
         # ==================================================
         # EVITAR CITAS DUPLICADAS

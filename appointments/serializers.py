@@ -1,6 +1,6 @@
 # ======================================================
 # APPOINTMENTS / SERIALIZERS.PY
-# VERSIÓN CORREGIDA (SIN VALIDACIÓN DE ROL)
+# VERSIÓN CORREGIDA (SIN VALIDACIÓN DE PROFESIONALES)
 # ======================================================
 
 from rest_framework import serializers
@@ -53,7 +53,7 @@ class AppointmentSerializer(serializers.ModelSerializer):
     # ==================================================
 
     patient = serializers.PrimaryKeyRelatedField(
-        queryset=User.objects.all(),  # ⬅️ PERMITIR CUALQUIER USUARIO
+        queryset=User.objects.all(),
         required=True,
         allow_null=False,
     )
@@ -222,7 +222,7 @@ class AppointmentSerializer(serializers.ModelSerializer):
         )
 
         # ==================================================
-        # VALIDAR PACIENTE (SOLO QUE EXISTA)
+        # VALIDAR PACIENTE
         # ==================================================
 
         patient = data.get("patient")
@@ -232,9 +232,6 @@ class AppointmentSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({
                 "patient": "El paciente es obligatorio."
             })
-
-        # ⬇️⬇️⬇️ ELIMINADA LA VALIDACIÓN DE ROL ⬇️⬇️⬇️
-        # YA NO SE VERIFICA patient.role != "patient"
 
         # ==================================================
         # TIPO DE CITA
@@ -364,16 +361,9 @@ class AppointmentSerializer(serializers.ModelSerializer):
             )
 
         # ==================================================
-        # NO DOS PROFESIONALES
+        # ⬇️⬇️⬇️ VALIDACIÓN ELIMINADA ⬇️⬇️⬇️
+        # Ya no se valida que no puedan tener ambos profesionales
         # ==================================================
-
-        if doctor and esthetician:
-
-            raise serializers.ValidationError({
-                "professional":
-                "Una cita no puede tener un doctor y "
-                "una esteticista asignados al mismo tiempo.",
-            })
 
         # ==================================================
         # VALIDAR DOCTOR

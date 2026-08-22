@@ -115,7 +115,7 @@ def appointments_api(request):
 
 
 # ======================================================
-# CREAR CITA - VERSIÓN SIMPLIFICADA Y CORREGIDA
+# CREAR CITA - CON DOCTOR Y ESTETICISTA SIEMPRE
 # ======================================================
 
 @api_view(["POST"])
@@ -128,17 +128,36 @@ def create_appointment_api(request):
     )
 
     # ==================================================
-    # CONSTRUIR LOS DATOS CON EL USUARIO AUTENTICADO
+    # OBTENER EL TIPO DE CITA
+    # ==================================================
+
+    appointment_type = request.data.get("appointment_type")
+
+    # ==================================================
+    # DATOS BASE
     # ==================================================
 
     data = {
-        "patient": request.user.id,  # ⬅️ ASIGNAR EL USUARIO AUTENTICADO
-        "appointment_type": request.data.get("appointment_type"),
+        "patient": request.user.id,
+        "appointment_type": appointment_type,
         "date": request.data.get("date"),
         "time": request.data.get("time"),
-        "doctor": request.data.get("doctor"),
-        "esthetician": request.data.get("esthetician"),
     }
+
+    # ==================================================
+    # ASIGNAR AMBOS PROFESIONALES SIEMPRE
+    # ==================================================
+
+    # Siempre asignar doctor (Asdrúbal Gutty - ID: 2)
+    data['doctor'] = 2
+
+    # Siempre asignar esteticista (Luz Constanza - ID: 14)
+    data['esthetician'] = 14
+
+    print(
+        "[AUDITORÍA][APPOINTMENTS] "
+        f"Asignando doctor (ID:2) y esteticista (ID:14) a cita tipo: {appointment_type}"
+    )
 
     print(
         "[AUDITORÍA][APPOINTMENTS] "
